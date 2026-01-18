@@ -1,0 +1,209 @@
+Applied Deep Learning
+Transformers
+Alexander Pacha - TU Wien
+Recap
+What is the relation between the input and output of an autoencoder? ● What are the two main blocks in an autoencoder? ● What can you use an autoencoder for? ● How are variational autoencoders diﬀerent from standard autoencoders? ● What does the Kullback-Leibler divergence measure? ● What are the two main blocks in a generative adversarial network?
+Transformers
+Sequence Modeling with Deep Neural Networks
+Popular choice: Recurrent neural networks with Encoder-Decoder architecture ● Input and output sequences can have diﬀerent lengths: Process input with encoder (reader) into context C ○ ○ Decoder (writer) generates output from context C
+Encoder
+Decoder
+...
+C
+...
+x1
+x2
+x(...)
+xnx
+y1
+y2
+y(...)
+yny
+Problem: Long-Term Memory
+CNNs: Fixed window ● RNNs: Short reference window ● LSTMs/GRUs: Longer reference window
+“When I woke up, I saw the most incredible thing that I’ve ever witnessed. I tried to understand what was happening, but at that moment, I just stared blankly at it.” LSTM
+Transformers
+RNN
+CNN
+What is a Transformer?
+Architecture based on auto-regressive
+Encoder-Decoder architecture
+Input sequence can be processed in parallel ● Key-ingredient: Attention mechanism
+Source: [2]
+Input Embedding & Positional Encoding
+Input embedding and positional encoding
+Input embedding transforms the input into a vector
+Words in language processing using Word2Vec ○ Image to features using CNN backbone
+Input embedding and positional encoding
+Input embedding transforms the input into a vector
+Words in language processing using Word2Vec ○ Image to features using CNN backbone
+Positional Encoding adds contextual information of the position within the input
+sequence
+0.37 0.99 0.01 0.08
+Positional Encoding
+0.42 0.84 0.12 0.81
+Embedding of “Dog”
+Vector Encoding of position in sentence
+Embedding of “Dog” with context info
+Attention
+Attention and Self-Attention
+What part of the input should be focused on? ● Captures contextual information between elements in the input sequence
+Source: [9]
+Attention and Self-Attention
+What part of the input should be focused on? ● Captures contextual information between elements in the input sequence ● Self-Attention associate each word of the input sequence to every other word
+Focus
+Attention Vectors
+Source: [1]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Implementing Attention
+Conceptualized as a retrieval problem with a Query
+lookup in a set of Key-Value pairs
+Implemented by a series of matrix multiplications
+Source: [8]
+Multi-Headed Attention
+Self-attention tends to put too much weight on itself. ● Replicating the attention layer and averaging the result reduces this problem
+Focus
+Attention Vectors
+Source: [1]
+Masked Attention
+Masked (Multi-headed) Attention
+Attention in decoder very similar to attention in encoder, but:
+When processing the output sequence, we must only look into the past
+Masked (Multi-headed) Attention
+Attention in decoder very similar to attention in encoder, but:
+When processing the output sequence, we must only look into the past
+Masked (Multi-headed) Attention
+Attention in decoder very similar to attention in encoder, but:
+When processing the output sequence, we must only look into the past
+Attention between Input and Output Seq.
+Feed Forward & Norm
+Feed Forward Network
+Feed forward Neural Network: used to transform the attention
+vectors into a format that is digestible by the next block
+Allows parallelization: all input words can be passed in at the same time because
+attention blocks are independent of each other
+Linear & Softmax
+Output
+Linear Layer: Expand dimensions to vocabulary size in the output ● Softmax: Compute human-interpretable probabilities
+Architectures
+Encoder-decoder / Encoder-only / Decoder-only
+Encoder-decoder: ● Bidirectional encoder without masking ● Autoregressive decoder with masked attention Encoder-only: ● Bidirectional encoder without masking ● Used to generate a dense embedding through
+unsupervised learning
+Typically is used with a ﬁne-tuned head for
+downstream tasks, e.g., classiﬁcation
+Decoder-only: ● Just tokenization and positional embedding ● Autoregressive decoder with masked attention ● No cross-attention
+Source: [2]
+Transformers for Object Detection
+State-of-the-art Object Detection
+Uses Deep Convolutional Neural Networks ● Problem can be formulated as surrogate regression and classiﬁcation task:
+○ Classifying and reﬁning these proposals ○ ■ ■
+Finding interesting regions in the image (“proposals”)
+one-shot detector with a dense set of proposals (YOLO) two-step process with sparse set of proposals (Faster R-CNN)
+Problem can be formulated as segmentation and
+clustering task:
+○ Group pixels into connected regions that depict to the same object
+Extract pixel-wise information
+Problematic Issues
+Hand-designed method for anchor
+generation
+○ Heuristic to assign target box to anchors
+Requires prior knowledge about the dataset
+Non-maximum suppression for near-duplicate predictions
+How to handle fragmented objects in
+clustering-based approaches?
+Ideally Directly predict set of bounding boxes
+DEtection TRansformer End-to-End Object Detection with Transformers
+Conventional CNN backbone (e.g., ResNet-50)
+Source: [3]
+Bipartite Matching Loss
+Challenge: ● Determine a unique matching
+between proposals and ground truth bounding boxes
+Solution: ● Search for permutation with the
+lowest pair-wise matching cost
+Taking into account class prediction and similarity of bounding boxes
+Eﬃciently computed using
+Hungarian algorithm
+Bipartite Matching Loss - Example
+(bird, 10, 20, 80, 50)
+(bird, 40, 50, 95, 83)
+N
+(cat, 90, 30, 30, 30)
+(Ø, 0, 0, 0, 0)
+(Ø, 0, 0, 0, 0)
+Padded objects
+Predictions
+(bird, 35, 45, 87, 60)
+(bird, 12, 15, 77, 51)
+(Ø, 0, 0, 0, 0)
+Padded objects
+(Ø, 0, 0, 0, 0)
+(Ø, 0, 0, 0, 0)
+Ground Truth
+N
+Bipartite Matching Loss
+Standard Cross- Entropy loss
+Scale-invariant
+No loss for ‘No Object’-boxes
+Scale-sensitive
+DEtection TRansformer End-to-End Object Detection with Transformers
+Transformer for Object Detection
+Similar to Transformers for NLP ● Instead of feeding back predictions and predicting one box at a time, all boxes are predicted simultaneously
+N
+Architecture in Detail
+Object Queries
+Learnt object queries, that can “ask” diﬀerent things ● Similar to guided anchoring
+Visualization of all box predictions on all images from COCO 2017 val set for 20/100 prediction slots.
+Green = Small boxes, Red = Large horizontal boxes, Blue = Large vertical boxes
+Visualization of Decoder Attention
+Inference code
+Strengths
+Generalizes well to unseen number of instances ● Can be extended to perform Panoptic Segmentation
+Caveats
+Very long training schedule ● Does not perform very well on small objects ● Does not perform very well with many objects (coming near max. nr of obj.) ● But in general performs comparable or better than Faster R-CNN
+Playing with DETR
+Source code: https://github.com/facebookresearch/detr
+Advances in Transformers
+Advances in Transformers
+Embeddings from Language Models (ELMo): Replaces ﬁxed embedding with
+context-aware embeddings [10]
+ULM-FiT: Process for ﬁne-tuning language models for various tasks [11] ● BERT: Eﬃcient pre-training by masking inputs in bidirectional transformers [12] ● Reformer: Local-sensitive hashing for more eﬃcient attention [13] ● Linformer: Self-attention with linear complexity by approximating stochastic self-attention matrix with low-rank matrix [14]
+Lightweight Convolutions: Replacing self-attention with convolutions [15]
+Advances in Vision Transformer
+Replacing Convolutions entirely with Transformers [16] ● Shifting the windows in Vision Transformers (Swin Transformers) [17, 18] ● Improving certain aspects of Detection Transformer [19] ● Using attention visualizations for explainability [20]
+Summary
+Transformers are powerful models for sequence-to-sequence problems ● Transformers consist of encoder and decoder block with attention mechanisms ● (Self-)Attention allows the network to learn where to pay attention to ● Many current advances
+More eﬃcient pre-training ○ More eﬃcient self-attention ● Popular architectural variants are
+○
+encoder-only architecture for training a dense embedding decoder-only architecture for text generation
+Transformers can also be used for Object Detection by formulating it as a
+direct box prediction problem, transforming a set of object queries into unique bounding boxes
+Literature
+1. Halthor, Transformer Neural Networks Explained, 2020 Vaswani et al., Attention Is All You Need, 2017 2. Carion et al. End-to-End Object Detection with Transformers, 2020 3. Kilcher, End-to-End Object Detection with Transformers (Paper explanation), 2020 4. Pacha et al., A Baseline for General Music Object Detection with Deep Learning, 2018 5. Parmar et al. Image Transformer, 2018 6. Kilcher, Attention Is All You Need (Explained), 2017 7. Phi, Illustrated Guide to Transformers: Step by Step Explanation, 2020 8. 9. Olah et al. Attention and Augmented Recurrent Neural Networks, 2016 10. 11. Howard et al. Universal Language Model Fine-tuning for Text Classiﬁcation, 2018 12. Devlin et al. BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 2018 13. 14. Wang et al. Linformer: Self-Attention with Linear Complexity, 2020 15. Wu et al. Pay less attention with Lightweight and Dynamic Convolutions, 2019 16. Dosovitskiy et al. An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale, 2021 17. 18. 19. 20. Gildenblat, Exploring Explainability for Vision Transformers, 2021 Kitaev et al. Reformer: The Eﬃcient Transformer, 2020
+Peters et al. Deep contextualized word representations, 2018
+Icon and Image credits
+Free icons from Flaticon: ● https://www.ﬂaticon.com/free-icon/asking_900415 ● https://www.ﬂaticon.com/free-icon/funnel_989330 ● https://www.ﬂaticon.com/free-icon/book_2490421 ● https://www.ﬂaticon.com/free-icon/medal_3176367 ● https://www.ﬂaticon.com/free-icon/microscope_3523823 ● https://www.ﬂaticon.com/free-icon/3d_5270902
+Other images: ● https://www.vulture.com/2017/06/transformers-mythology-explained.html ● https://ﬂic.kr/p/F3uXFa

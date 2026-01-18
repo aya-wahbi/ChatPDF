@@ -1,0 +1,180 @@
+Applied Deep Learning
+Deep Reinforcement Learning
+Alexander Pacha - TU Wien
+Recap
+What do we mean when we talk about the Capacity of a ML model? ● What aﬀects the eﬀective capacity? ● Can increasing the training set size improve performance?
+Reinforcement Learning
+Reinforcement Learning Learn how to make good sequences of decisions
+Classes of Learning Problems
+Supervised Learning
+Unsupervised Learning
+Data: (x, y) x is data, y is label
+Data: x x is data, no labels
+Goal: Learn function to map
+x ↦ y
+Goal: Learn underlying structure (distribution)
+Example:
+Example:
+This thing is an apple
+These two things are similar
+Reinforcement Learning
+Data: state-action pairs
+Goal: Maximize future rewards over many time steps
+Example:
+Eat this thing because it will keep you alive
+Source: [1]
+Challenges in Reinforcement Learning
+Optimization Trying to make good decisions that yield the best outcome
+Delayed consequences Rewards are received long after taking a certain decision
+Exploration Trying to learn how the world works by trying (and failing)
+Generalization Mapping past experience to actions even if situation has never been seen
+Key Concepts
+Agent
+Observations
+State changes: st+1 Reward: rt
+Action: at
+Actions
+Environment
+Key Concepts
+Total reward:
+Discounted Total reward:
+Agent
+Observations
+State changes: st+1 Reward: rt
+Action: at
+Environment
+Actions
+ɣ: Discount factor ∈ [0, 1]
+Key Concepts
+Quality Function Q(s, a)
+Value Function V(s)
+Rewards that you expect when you perform action a in state s
+Rewards that you expect when you are currently in state s
+Advantage function A(s, a) = Q(s, a) - V(s)
+Policy Function π(a | s) or π(s)
+Probability that action a is the best option in state s
+Value Function
+From the Q-function to an Action
+Discounted total rewards: Rt = rt + ɣrt+1 + ɣ2rt+2 + ...
+Q(s, a) = 𝔼[Rt]
+Q-function captures expected total future reward an agent can achieve when taking action a in state s.
+Given a Q-function, a policy function can be chosen to maximize future rewards:
+π(s) = argmax Q(s, a) a
+Deep Reinforcement Learning
+Deep Reinforcement Learning Algorithms
+Value Learning
+Policy Learning
+Find Q(s, a)
+Find π(s)
+a = argmax Q(s, a) a
+Sample a ~ π(s)
+Source: [1]
+Deep Q Networks (DQN)
+Neural Network learns to predict Q-function
+Target
+Predicted
+Source: [1]
+DQN for Atari Games
+Source: [1]
+DQN for Atari Games
+Source: [1]
+Downsides of Q-learning
+Can only handle limited complexity
+Model scenarios with large or continuous action spaces cannot be handled
+Limited ﬂexibility
+Cannot learn stochastic policies since policy is deterministically computed from
+the Q function
+Policy Gradient (PG)
+DQN: Approximate Q and infer optimal policy
+Policy Gradient: Directly learn the policy
+Source: [1]
+Training Policy Gradient
+1. Run a policy for a while 2.
+Increase probability of actions that lead to high rewards
+3. Decrease probability of actions that
+lead to low rewards
+function REINFORCE
+Initialize θ for episode ~ 𝝅θ {si, ai, ri}i=1 to T-1 ⟵ episode for t=1 to T-1 ∇ ⟵ ∇ θ ⟵ θ + 𝛼∇
+log 𝝅θ(at|st) Rt θ log 𝝅θ(at|st) Rt
+return θ
+Source: [1]
+Exploration
+ε - Greedy Exploration
+ε - Value
+p(x) = ε
+p(x) = 1-ε
+Explore Choose random action
+Exploit Pick top action from policy
+Source: [7]
+Overcoming Sparse Rewards
+Reward Shaping
+Design other reward mechanisms that produce more frequent positive rewards ● Easier for the agent to converge to a solution
+But:
+Custom process that needs to be redone for each task ● Alignment Problem: When you shape reward function, it might happen that the agent ﬁnds a surprising solution to get a high reward, but not at all do what you want it to do
+Limits the solution to the way how humans solved the task
+Auxiliary Tasks
+Source: [6]
+Auxiliary Tasks
+Source: [6]
+Curiosity-driven Exploration
+Extract features from the current frame into a latent space ● Forward network tries to predict same latent representation for the next frame
+If agent has seen environment before, the prediction will be accurate If agent has never seen situation before, the prediction will be poor ● Agent is rewarded for exploring unseen parts of the environment
+○
+Source: [8]
+Hindsight Experience Replay (HER)
+If an episode is not successful, the agent does not get any reward ● Instead of giving no reward, we create a virtual goal and pretend, it is what we wanted
+Sources: [7, 9]
+Practical Reinforcement Learning
+OpenAI gym
+https://gym.openai.com/
+Playing Pacman
+import gym
+env = gym.make("MsPacman-v0")
+state = env.reset()
+done = False
+total_rewards = 0
+while not done:
+env.render()
+action = env.action_space.sample()
+state, reward, done, info = env.step(action=action)
+total_rewards += reward
+Pong from Pixels
+Karpathys example on Google Colab
+Source: [13]
+A Reference Framework - rlpyt
+https://github.com/astooke/rlpyt
+Implements common algorithms: ● Policy Gradient ● Deep-Q Learning ● Q-Function Policy Gradient
+Policy Gradient Algorithms
+https://lilianweng.github.io/lil-log/2018/04/08/policy-gradient-algorithms.html
+Spinning up Reinforcement Learning
+https://spinningup.openai.com/en/latest/
+AlphaGo (2016)
+1. Initial training: human data
+2. Self-play and reinforcement learning
+AlphaGo beat top human Go player in 2016.
+3. “Intuition” about board state
+Source: [1]
+AlphaZero (2018)
+Framework to learn board games without human pre-learning ● Entirely learned through self-play and the game rules
+Demis Hassabis: “Play style feels ‘alien’: It sometimes wins by oﬀering counterintuitive sacriﬁces, like oﬀering up a queen and bishop to exploit a positional advantage. It’s like chess from another dimension”
+Source: [12]
+AlphaStar (2019)
+Deep Neural Network beat Professional Star Craft II players ● Internally has a transformer network, LSTM, Pointer Network and Centralised Value Baseline.
+Source: [10]
+Summary
+Reinforcement Learning is a class of problems that operates on state-action
+pairs
+An agent perceives a state an performs action in an environment ● Common functions
+Q-function measures expected rewards from taking action a in state s ○ V-function measure expected rewards when starting in state s ○ Policy-function estimates the best action a to take when in state s
+Value-learning vs. Policy-learning ● Many challenges: Partially observable environment ○ ○ Sparse/Late rewards ○ Credit assignment problem
+RL can be seen as supervised learning, but on a continuously changing
+dataset (the episodes).
+Literature
+1. Amini, Soleimany, MIT 6.S191 - Introduction to Deep Learning 2. 3. 4. 5. 6. 7. 8. 9. Andrychowicz et al. Hindsight Experience Replay, 2017. 10. 11. Mnih et al. Human-level control through deep reinforcement learning, 2015. 12. The AlphaStar Team. AlphaStar: Mastering the Real-Time Strategy Game StarCraft II, 2019.
+Stooke et al. rlpyt: A Research Code Base for Deep Reinforcement Learning in PyTorch, 2019. Luketina et al. A Survey of Reinforcement Learning Informed by Natural Language, 2019. Li et al. Stanford CS231n: Reinforcement Learning in Visual Computing, 2017. Brunskill et al. Stanford CS234: Reinforcement Learning, 2019. Jaderberg et al. Reinforcement Learning with Unsupervised Auxiliary Tasks, 2016. Steenbrugge. Overcoming spare rewards in Deep RL, 2018. Pathak et al. Curiosity-driven Exploration by Self-supervised predicition, 2017.
+Silver et al. A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play, 2018.
+13. Wang et al. Dueling Network Architectures for Deep Reinforcement Learning, 2016. 14. Karpathy, Deep Reinforcement learning: Pong from Pixels, 2016.
+Icon credits
+Free icons from Flaticon:
+● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●
+https://www.ﬂaticon.com/free-icon/asking_900415 https://www.ﬂaticon.com/free-icon/dictionary_917168 https://www.ﬂaticon.com/free-icon/apple_590764 https://www.ﬂaticon.com/free-icon/apple_1155289 https://www.ﬂaticon.com/free-icon/apple_1135536 https://www.ﬂaticon.com/free-icon/delay_1995982 https://www.ﬂaticon.com/free-icon/direction_2345147 https://www.ﬂaticon.com/free-icon/planning_762620 https://www.ﬂaticon.com/free-icon/scale_462315 https://www.ﬂaticon.com/free-icon/employee_1256663 https://www.ﬂaticon.com/free-icon/worlwide_1256630 https://www.ﬂaticon.com/free-icon/hammer_588409 https://www.ﬂaticon.com/free-icon/idea_427735 https://www.ﬂaticon.com/free-icon/inspection_1814540 https://www.ﬂaticon.com/free-icon/magic-ball_867840 https://www.ﬂaticon.com/free-icon/learning_2126425 https://www.ﬂaticon.com/free-icon/money_1160083 https://www.ﬂaticon.com/free-icon/compass_2345124 https://www.ﬂaticon.com/free-icon/reward_1426739

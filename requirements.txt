@@ -1,0 +1,8 @@
+easyocr
+sentence-transformers
+faiss-cpu
+unstructured[all-docs]
+numpy
+huggingface_hub[hf_xet]
+Ollama
+

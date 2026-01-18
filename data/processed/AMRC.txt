@@ -1,0 +1,3344 @@
+Advanced Methods for Regression and Classification
+Lecture Notes
+Prof. Dr. Peter Filzmoser
+Peter.Filzmoser@tuwien.ac.at
+Institute of Statistics and Mathematical Methods in Economics
+TU Wien, Austria
+Vienna, October 2024
+Distribution or reproduction of this manuscript or of parts of the manuscript is only permitted with the agreement of the author.
+Preface
+The field of statistics has drastically changed since the availability of computing power. Computational statistics is nowadays a very popular field with many new developments of statistical methods and algorithms, and many interesting applications. One challenging problem is the increasing size and complexity of data sets. Not only for saving and filtering such data, but also for analyzing huge data sets new technologies and methods had to be developed. Another challenge are data sets with many variables but only few observations, so-called “flat data” (in contrast to “tall data”). The recent literature in statistics and com- puter science is very rich with proposals to cope with such data.
+This manuscript is concerned with linear and nonlinear methods for regression and classifica- tion. In the first chapters, “classical” methods like least squares regression and discriminant analysis are treated. More advanced methods such as “generalized additive models”, tree- based methods and support vector machines follow.
+Each chapter introducing a new method is followed by a chapter with examples from practice and solutions with R. The results of different methods are compared in order to get an idea of the performance of the methods.
+The manuscript is essentially based on the book “The Elements of Statistical Learning”, Hastie et al. 2001.
+The R-logo is used throughout the course notes, and it refers to illustrations and
+examples in R and gives the section and page where they can be found.
+ii
+Contents
+Preface . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+I Fundamentals
+1 The linear regression model
+1.1 Least Squares (LS) regression . . . . . . . . . . . . . . . . . . . . . . . . . . 1.1.1 Parameter estimation . . . . . . . . . . . . . . . . . . . . . . . . . . . 1.1.2 Tests and confidence intervals . . . . . . . . . . . . . . . . . . . . . . 1.1.3 Decomposition of the variance of y . . . . . . . . . . . . . . . . . . .
+2 Comparison of models and model selection
+2.1 Test for several coefficients to be zero . . . . . . . . . . . . . . . . . . . . . . 2.2 Explained variance . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . Information criteria . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.3 . . . . . . . . . . . . . . . . . . 2.3.1 Akaike’s information criterion (AIC) 2.3.2 Bayes information criterion (BIC) . . . . . . . . . . . . . . . . . . . . 2.3.3 Mallows’ Cp . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.3.4 Use of the different criteria . . . . . . . . . . . . . . . . . . . . . . . . 2.4 Resampling methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.4.1 Cross validation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.4.2 Bootstrap . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.5 Procedures for variable selection . . . . . . . . . . . . . . . . . . . . . . . . . 2.5.1 Stepwise algorithms . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.5.2 Best subset regression . . . . . . . . . . . . . . . . . . . . . . . . . .
+II Linear regression
+3 Linear methods
+3.1 Least squares regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3.1.1 Bias versus variance and interpretability . . . . . . . . . . . . . . . . 3.2 Methods using derived inputs as regressors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3.2.1 Principal Component Regression (PCR) 3.2.2 Partial Least Squares (PLS) regression . . . . . . . . . . . . . . . . . 3.2.3 Continuum regression . . . . . . . . . . . . . . . . . . . . . . . . . . . 3.3 Shrinkage methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3.3.1 Ridge regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3.3.2 Lasso regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+iii
+i
+1
+2 3 3 5 6
+8 8 9 9 9 12 12 12 12 13 13 14 14 15
+16
+17 17 17 18 18 19 20 21 21 24
+4 Linear methods in R
+4.1 Least Squares (LS) regression in R . . . . . . . . . . . . . . . . . . . . . . . 4.1.1 Parameter estimation . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.1.2 Tests and confidence intervals . . . . . . . . . . . . . . . . . . . . . . 4.2 Variable selection in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.2.1 Model comparison with anova() . . . . . . . . . . . . . . . . . . . . . 4.2.2 Body fat data . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.2.3 Full model . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.2.4 Stepwise selection - automatic model search . . . . . . . . . . . . . . 4.2.5 Best subset regression with Leaps and Bound algorithm . . . . . . . . 4.3 Methods using derived inputs as regressors in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.3.1 The problem of correlated regressors 4.3.2 PCR . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.3.3 PLS regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.4 Shrinkage methods in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.4.1 Ridge regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.4.2 Lasso regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4.4.3 Adaptive Lasso . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+III Linear classification
+5 Linear methods for classification
+5.1 Linear regression of an indicator matrix . . . . . . . . . . . . . . . . . . . . . 5.2 Linear discriminant analysis (LDA) . . . . . . . . . . . . . . . . . . . . . . . 5.2.1 Classical LDA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5.2.2 Quadratic discriminant analysis (QDA) . . . . . . . . . . . . . . . . . 5.2.3 Regularized discriminant analysis . . . . . . . . . . . . . . . . . . . . 5.3 Logistic regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6 Linear methods for classification in R
+6.1 Linear regression of an indicator matrix in R . . . . . . . . . . . . . . . . . . 6.2 Linear Discriminant Analysis in R . . . . . . . . . . . . . . . . . . . . . . . . 6.2.1 Classical LDA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6.2.2 QDA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6.2.3 Regularized discriminant analysis . . . . . . . . . . . . . . . . . . . . 6.3 Logistic regression in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+IV Nonlinear methods
+7 Basis expansions
+7.1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7.2 Smoothing splines . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7.2.1 Choice of the degrees of freedom . . . . . . . . . . . . . . . . . . . . .
+Interpolation with splines
+8 Basis expansions in R
+8.1 Interpolation with splines in R . . . . . . . . . . . . . . . . . . . . . . . . . . 8.2 Smoothing splines in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+iv
+26 26 26 27 28 28 29 30 31 33 35 35 37 38 39 39 41 42
+46
+47 47 48 48 50 50 51
+55 55 56 56 59 59 59
+64
+66 66 69 69
+71 74 78
+9 Generalized Additive Models (GAM)
+9.1 General aspects on GAM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9.2 Parameter estimation with GAM . . . . . . . . . . . . . . . . . . . . . . . .
+10 Generalized additive models in R
+11 Tree-based methods
+11.1 Regression trees . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11.2 Classification trees 11.3 Random Forests . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+12 Tree based methods in R
+12.1 Regression trees in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12.2 Classification trees in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12.3 Random Forests in R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+13 Support Vector Machine (SVM)
+101 13.1 Separating hyperplanes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 101 13.1.1 Perceptron learning algorithm of Rosenblatt . . . . . . . . . . . . . . 102 13.2 Linear Hyperplanes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 103 13.2.1 The separable case . . . . . . . . . . . . . . . . . . . . . . . . . . . . 104 13.2.2 The non-separable case . . . . . . . . . . . . . . . . . . . . . . . . . . 106 13.3 Moving beyond linearity . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 108
+14 Support Vector Machines with R
+111 14.1 Introductory examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 111 14.2 Classification example . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 116 14.3 Regression example . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 118
+Bibliography
+v
+81 81 82
+84
+88 88 89 90
+93 93 96 99
+121
+Part I
+Fundamentals
+1
+Chapter 1
+The linear regression model
+The aim of a regression model is to describe the output variable y in terms of one or more input variables x1,x2,...,xp. The output variable is often called “response” or “dependent variable”, and the inputs are called “predictors” or “independent variables”.
+In general, a regression model has the form
+y = f(x1,x2,...,xp) + ε,
+where f represents a linear or even non-linear function of the inputs. The error term ε reveals that in general it will be impossible to find an exact relationship between f(x1,x2,...,xp) and y, but only an approximate one, thus
+y ≈ f(x1,x2,...,xp).
+A very special and important case is the linear regression model, where we consider linear combinations of the input variables of the form
+f(x1,x2,...,xp) = β0 +
+p (cid:88)
+xjβj.
+j=1
+“Linear combination” means that the input variables get first weighed with constants and are then summarized. The result should explain the output variable as good as possible, which leads to the linear regression model
+y = β0 + x1β1 + ... + xpβp + ε.
+The terms βj are unknown parameters or coefficients, which will be estimated from given data. The variables xj can come from different sources:
+(cid:136) quantitative inputs, for example the height of different people (cid:136) transformations of quantitative inputs, such as log, square-root, or square (cid:136) basis-expansions, such as x2 = x2 (cid:136) numeric or “dummy” coding of the levels of qualitative inputs (cid:136) interactions between variables, for example x3 = x1 · x2
+1, x3 = x3
+1, leading to a polynomial representation
+2
+(1.1)
+No matter the source of the xj, the model is linear in the parameters. Typically we estimate the parameters βj from a set of training data of the following form
+
+       
+y1 x11 x12 y2 x21 x22 ... yi xi1 xi2 ... yn xn1 xn2
+··· x1p ··· x2p
+··· xip
+··· xnp
+
+       
+=
+
+       
+y1, x1 y2, x2 ... yi, xi ... yn, xn
+
+       
+Each xi = (xi1,xi2,...,xip) is a feature measurement for the i-th case and yi is the value of the i-th observation. The estimated parameters are denoted by ˆβ0, ˆβ1,..., ˆβp and by inserting those values in the linear model (1.1) for each observation one gets:
+ˆyi = ˆf(xi1,xi2,...,xip) = ˆβ0 +
+p (cid:88)
+xij
+ˆβj
+j=1
+The fitted values ˆyi should be as close as possible to the real measured values yi. The differences yi − ˆyi are called residuals. The definition of “as close as possible” as well as an estimation of how good the model actually is, will be given in the following.
+1.1 Least Squares (LS) regression
+With the notation above we can formulate the linear regression model for every observation i = 1,...,n, which is
+yi = β0 +
+p (cid:88)
+xijβj + εi
+j=1 with the i-th error term εi. A request often made is the independence of the error terms from each other and normal distribution with expectation 0 and constant variance σ2, thus εi ∼ N(0,σ2). Note that in this case the εi and thus yi are treated as random variables, whereas the xij are seen as fixed values. The assumption on the error term is important once we want to do“inference”, i.e. construct confidence intervals for the regression parameters and perform statistical hypothesis tests. For the purpose of estimating the regression parameters we do not rely on distributional assumptions.
+1.1.1 Parameter estimation
+The multiple linear regression model can conveniently be written in matrix notation,
+y = Xβ + ε
+with the n values y = (y1,...,yn)⊤ of the response, the “design matrix”
+X =
+
+       
+1 x11 x12 1 x21 x22 ... 1 xi1 xi2 ... 1 xn1 xn2
+··· x1p ··· x2p
+··· xip
+··· xnp
+
+       
+=
+
+       
+1, x1 1, x2 ... 1, xi ... 1, xn
+
+       
+3
+(1.2)
+and the error terms ε = (ε1,...,εn)⊤. Our aim is to estimate the regression coefficients β = (β0,β1,...,βp)⊤. The most popular estimation method is least squares, in which we choose the coefficients which minimize the residual sum of squares (RSS)
+RSS(β) =
+n (cid:88)
+(cid:32)
+yi − β0 −
+p (cid:88)
+xijβj
+(cid:33)2
+.
+i=1
+j=1
+This approach makes no assumptions about the validity of the model, it simply finds the best linear fit to the data. The least squares estimator turns out to be
+ˆβ = (X⊤X)−1X⊤y.
+Proof: Let X denote a (n × (p + 1))-matrix which each row being an input vector (with a 1 in the first position). Similarly, let y be the n-vector of outputs in the training data set. Then we can write the residual sum of squares as
+RSS(β) = (y − Xβ)⊤(y − Xβ) = ∥y − Xβ∥2
+with the Euclidean norm ∥·∥. This is a quadratic function in the p+1 parameters. Since we are looking for the smallest possible value of RSS, we have a classical minimization problem. Differentiating with respect to β yields
+∂RSS(β) ∂β
+=
+
+    
+∂ ∂β0 ∂ ∂β1
+∂ ∂βp
+RSS(β) RSS(β) ... RSS(β)
+
+    
+= −2X⊤(y − Xβ)
+∂2RSS(β) ∂β∂β⊤
+= 2X⊤X
+Assuming (for the moment) that X is nonsingular (thus there are at least as many observations as parameters and the observations do not lie in a subspace of lower dimension), and hence X⊤X is positive definite (thus invertible) the solution is a minimum. By setting the first derivative to zero we get
+X⊤(y − Xβ) = 0
+and then obtain the normal equations
+(X⊤Xβ) = X⊤y,
+and their unique solution ˆβ
+ˆβ = (X⊤X)−1X⊤y.
+□ Now the estimated regression parameters ˆβ that provide the best fit in the sense of mini- mizing RSS can be used for the prediction. If we use the available data xi as an input (an not new x-information), we talk about the fitted or estimated value, which is given by
+ˆyi = ˆf(xi) = (1,xi) ˆβ,
+and it can be compared to yi. This can be done for each of the n observations which leads to
+ˆy = X ˆβ
+= X(X⊤X)−1X⊤ (cid:125)
+(cid:124)
+(cid:123)(cid:122) Hat matrix H
+y
+4
+(1.3)
+(1.4)
+The matrix H = X(X⊤X)−1X⊤ is called the “hat matrix” because it puts the hat on y.
+It might happen that the columns of X are not linearly independent (for example, if two input variables perfectly correlate), so that X is not of full rank. Then X⊤X is singular and the least squares coefficients ˆβ are not uniquely defined. This case appears most often when one or more qualitative inputs are coded in a redundant fashion (recoding mostly eliminates the correlation) or in signal and image analysis, where the number of inputs p can exceed the number of training cases n (the features are typically reduced by filtering or regularization). If this situation happens, we have to use different methods for estimating the regression parameters, and these will be discuss in the following chapters.
+Section 4.1.1, page 26
+1.1.2 Tests and confidence intervals
+This now refers to “statistical inference”, which we now develop for the LS estimator. For this purpose we need to see the error terms ε (and thus also the responses y) as random variables.
+Theorem 1.1.2.1 (Gauss-Markov Theorem) Under the model assumption
+y = Xβ + ε,
+ε ∼ Nn(0,σ2I)
+and the condition that the input variables are fixed, the LS estimator ˆβ = (X⊤X)−1X⊤y is the best, linear, unbiased estimator (BLUE). Unbiased means that IE( ˆβ) = β. “Best” means that among all linear unbiased estimators, the LS estimator has the smallest sampling variance, thus it is the most accurate one in this class of estimators.
+Proof: see, e.g., Sch¨onfeld 1969
+Based on the above assumptions one can also derive the distribution of the LS estimator as ˆβ ∼ Np+1(β,σ2(X⊤X)−1). We have furthermore: n−p−1, where ˆσ2 = 1
+(cid:136) (n − p − 1)ˆσ2 ∼ σ2χ2
+n−p−1(y − X ˆβ)⊤(y − X ˆβ) is an unbiased
+estimator for σ2;
+(cid:136) ˆβ and ˆσ2 are statistically independent.
+Proof see e.g. Sch¨onfeld 1969
+Based on these distributional properties we can form tests and confidence intervals for the parameters βj. To test the hypothesis H0 : βj = 0, H1 : βj ̸= 0, we form
+zj =
+ˆβj ˆσ(cid:112)dj
+,
+where dj is the jth diagonal element of (X⊤X)−1. Under the null hypothesis, zj is zj ∼ tn−p−1, and hence a large absolute value of zj will lead to the rejection of the hypothesis. If σ would be known, zj would follow a standard normal distribution:
+ˆβj σ(cid:112)dj zj ∼ N(0,1)
+zj =
+5
+The difference between the tail quantities of the t-distribution and the standard normal becomes negligible as the sample size increases and so typically the normal quantiles are used. It can also be shown that the zj match the F-statistic described in Chapter 2 for the comparison of models if only one parameter is tested to be zero. For large n the quantiles of Fp1−p0,n−p1−1 approach those of the χ2 The test for βj = 0 can be used to obtain a confidence interval i.e. for a test at level α = 0.05 the critical values are zα/2,z1−α/2 = 1.96 (if σ is known). The 1 − α confidence interval for βj is:
+p1−p0.
+[ˆβj − z1−α/2
+(cid:112)djˆσ (cid:124) (cid:123)(cid:122) (cid:125) SD(ˆβj)
+, ˆβj + z1−α/2
+(cid:112)djˆσ]
+An approximative 95%-confidence interval is:
+ˆβj ± 2 · SD(ˆβj)
+Even if the Gaussian error assumption does not hold, this interval will be approximately correct, with its coverage approaching (1 − α) for n → ∞.
+Section 4.1.2, page 27
+1.1.3 Decomposition of the variance of y
+Idea: The deviation of the observed value around the mean is decomposed in an explained (captured by the regression) component (ˆyi − y) and an unexplained component (yi − ˆyi). We have: TSS = RegSS + RSS with
+(cid:136) Total Sum of Squares: TSS =
+n (cid:80) i=1
+(yi − y)2
+(cid:136) Residual Sum of Squares: RSS =
+n (cid:80) i=1
+(yi − ˆyi)2
+(cid:136) Regression Sum of Squares: RegSS =
+n (cid:80) i=1
+(ˆyi − y)2
+Proof: With yi − y = (yi − ˆyi) + (ˆyi − y), the total variation (TSS) of y can be decomposed as follows:
+TSS =
+n (cid:88)
+(yi − y)2
+=
+i=1 n (cid:88)
+((yi − ˆyi) + (ˆyi − y))2
+=
+i=1 n (cid:88)
+(yi − ˆyi)2 +
+n (cid:88)
+(ˆyi − y)2 + 2
+n (cid:88)
+(yi − ˆyi)(ˆyi − y)
+i=1
+i=1
+i=1
+where
+n (cid:88)
+(yi − ˆyi)(ˆyi − y) =
+n (cid:88)
+(yiˆyi − yiy − ˆyiˆyi + ˆyiy)
+i=1
+=
+i=1 n (cid:88)
+(yi − ˆyi)ˆyi − ¯y
+n (cid:88)
+(yi − ˆyi).
+i=1
+i=1
+with the estimated residuals ˆεi = yi = ˆyi. Switching to matrix notation we have that
+ˆε = y − ˆy = y − X(X⊤X)−1X⊤y.
+6
+(1.5)
+Then X⊤ˆε = X⊤y−X⊤X(X⊤X)−1X⊤y = 0, where 0 is a vector with p+1 zeros. In particular, the first zero element refers to the first column of ones 1 of X, and 1⊤ˆε = (cid:80)n i=1 ˆεi,which proofs that the second sum in Equation (1.5) is zero (i.e. the estimated residuals are always centered at zero). The first sum in (1.5) is
+ˆε⊤ˆy = ˆy⊤ˆε = (X ˆβ)⊤ˆε = ˆβ⊤(X⊤ˆε) = 0.
+With this decomposition, we get the F-statistic of Equation (2.1). The“Analysis of Variance (ANOVA)”, which is used to compare nested models, is based on the F-statistic.
+In doing so, the hypothesis H0 : β1 = ··· = βp = 0 is tested against H1 : βj ̸= 0 for some j = 1,...,p. Under H0, the regression would only give noise. The ANOVA table then is:
+RegSS RSS
+DF p
+MeanSS RegSS/p
+n − p − 1 RSS/(n − p − 1)
+with
+F0 =
+RegSS/p RSS/(n − p − 1)
+∼ Fp,n−p−1,
+where the above distributional assumptions of the independent residuals have to be met.
+Section 4.2.1, page 28
+7
+□
+Chapter 2
+Comparison of models and model selection
+One could be interested in reducing the number of input variables used to explain the output variable since this could simplify the model, making it easier to understand. In addition, the measuring variables is often expensive, a smaller model would therefore be cheaper. This means that we need a tool to compare different models.
+2.1 Test for several coefficients to be zero
+Let us assume that we have two models of different size
+M0 M1
+: y = β0 + β1x1 + ··· + βp0xp0 + ε : y = β0 + β1x1 + ······ + βp1xp1 + ε
+with p0 < p1. Here, p1 could be equal to p, which means that model M1 is the full model. By simultaneously testing several coefficients to be zero we want to find out if the additional variables xp0+1,...,xp1 in model M1 provide a significant explanation gain to the smaller model M0. If, for instance, we would like to find out if a categorical variable with k levels can be excluded from the model, one has to test if all dummy-variables used to represent those k levels can be set to zero. Rephrasing we get: H0 :“the small model is true”, meaning that the model M0 is acceptable. Basis for this test is the residual sum of squares
+RSS0 =
+n (cid:88)
+(cid:32)
+yi − ˆβ0 −
+p0 (cid:88)
+ˆβjxij
+(cid:33)2
+=
+n (cid:88)
+(yi − ˆyi)2
+i=1
+j=1
+i=1
+for model M0 and respectively
+RSS1 =
+n (cid:88)
+(cid:32)
+yi − ˆβ0 −
+p1 (cid:88)
+ˆβjxij
+(cid:33)2
+i=1
+j=1
+for model M1. This leads to the following test statistic
+F =
+RSS0−RSS1 p1−p0 RSS1 n−p1−1
+The F-statistic measures the change in residual sum of squares per additional parameter in the bigger model, and it is normalized by an estimate of σ2. Under Gaussian assumptions
+8
+(2.1)
+εi ∼ N(0,σ2) and the null hypothesis that the smaller model is correct, the F statistic will be distributed according to
+F ∼ Fp1−p0,n−p1−1. A value of the F statistic bigger than the (1−α)-quantile Fp1−p0,n−p1−1;1−α, e.g. for α = 0.05, results in a rejection of H0.
+Section 4.1.2, page 27
+2.2 Explained variance
+The multiple R-Square (coefficient of determination) describes the amount of variance that is explained by the model
+R2 = 1 −
+= 1 −
+RSS RegSS = TSS TSS (cid:80)(yi − ˆyi)2 (cid:80)(yi − y)2
+= Cor2(y, ˆy) ∈ [0,1]
+The closer R-Square is to 1, the better the fit of the regression. If the model has no intercept, y = 0 is chosen. Since the denominator remains constant, R-Square grows with the size of the model. In general we are not interested in the model with the maximum R-Square. Rather, we would like to select that model which leads only to a marginal increase in R-Square with the addition of new variables.
+The adjusted R-Square, a reduced R-Square value, prevents the effect of getting a bigger R- Square even though the fit gets worse, by including the degrees of freedom in the calculation [see, for example, Kutner and Nachtsheim, 2004]
+˜R2 = 1 −
+RSS/(n − p − 1) TSS/(n − 1)
+Section 4.1.2, page 27
+2.3
+Information criteria
+In the following we discuss the use of information criteria for model selection. The most prominent criteria are AIC (Akaike information criterion) and BIC (Bayesian information criterion). Both are applicable in settings where the model fitting is carried out by a max- imization of a log-likelihood function. AIC as well as BIC include a penalty term for the number of parameters used in the model. Generally, we should then select that model which gives the smallest value of AIC (or BIC) over the set of models considered.
+2.3.1 Akaike’s information criterion (AIC)
+The criterion of Akaike is based on the Kullback-Leibler (K-L) information I(f,g) [vgl. Boz- dogan, 2000]. K-L describes the loss of information when occurs when approximating a
+9
+precise probability distribution f(x) by a probability distribution g(x|θ). The K-L informa- tion is defined as:
+I(f,g) =
+(cid:90)
+f(x)log
+(cid:18) f(x) g(x|θ)
+(cid:19)
+dx
+Alternatively, the K-L information can be interpreted as a distance between the“truth”and a model. For I(f,g) we have:
+(cid:136) I(f,g) > 0 if f(x) ̸= g(x|θ) (cid:136) I(f,g) = 0 if f(x) = g(x|θ) almost everywhere
+The best model is thus losing the least information compared to all other models. This is equivalent to minimizing I(f,g) over all g. Since neither f nor θ are known, the K- L information cannot be used in its original version. Thus, the expected rather than the original K-L information is minimized. (2.2) can also be written as:
+(cid:90)
+(cid:90)
+I(f,g) =
+f(x)log(f(x))dx −
+f(x)log(g(x|θ))dx
+or
+I(f,g) = IEf[log(f(x))] − IEf[log(g(x|θ))]
+Since f is a fixed function, IEf[log(f(x))] can be considered as a constant C. Then it follows:
+I(f,g) = C − IEf[log(g(x|θ))]
+Thus, only IEf[log(g(x|θ))] needs to be estimated as a performance criterion for a model. Akaike has shown [vgl. Burnham and Anderson, 2004] that this is equivalent to an estimation of
+IEyIEx[log(g(x| ˆθ(y)))].
+Here, x and y are independent samples of the same distribution f, and ˆθ refers to the maxi- mum likelihood estimation of θ based on a model g and data y. Akaike found a formal rela- tion between the Kullback-Leibler information and the likelihood theory. According to that, the maximized log-likelihood log(g(x|ˆθ(y)) is a biased estimator of IEyIEx[log(g(x|ˆθ(y)))], where the bias is approximatively p, the number of parameters used in the estimated model. log(g(x|ˆθ(y))−p thus yields an approximatively unbiased estimator for IEyIEx[log(g(x|ˆθ(y)))]. Summarizing, the Kullback-Leibler information I(f,g) can be estimated by
+ˆIEˆθ[I(f, ˆg)] = C − log(g(x|ˆθ(y)) + p
+with ˆg = g(·|ˆθ). Let us simply denote log(g(x| ˆθ(y))) by maxlogL. The ”‘Akaike Information Criterion”’ (AIC) only considers the relative information, and thus ignores C, and after multiplication by 2 (by historical reason) it is defined as
+AIC = −2maxlogL + 2p.
+From all models considered one selects now that one with minimal AIC.
+10
+(2.2)
+(2.3)
+AIC – an example
+Consider the model yi = f(xi,θ) + εi for i = 1,...,n. Thus, there is a functional relation between the independent and the dependent variable by the function f, which depends on the p-dimensional parameter venctor θ. Moreover, εi ∼ N(0,σ2) for all i, and the error terms are independent. The density of εi = yi − f(xi) is
+ϕ(εi) =
+√
+1 2πσ2
+e− (yi−f(xi))2
+2σ2
+.
+Hence the likelihood function is
+n (cid:89)
+1 2πσ2
+e− [yi−f(xi,θ)]2
+√
+L =
+2σ2
+i=1
+(cid:40)
+n (cid:88)
+= (2πσ2)− n
+2 exp
+−
+i=1
+[yi − f(xi,θ)]2 2σ2
+(cid:41)
+and the log-likelihood function is
+n 2
+log(2πσ2) (cid:125)
+logL = − (cid:124)
+(cid:123)(cid:122) independent from data
+−
+1 2σ2
+n (cid:88)
+i=1
+[yi − f(xi,θ) (cid:125) (cid:123)(cid:122) (cid:124) residuals
+]2.
+Maximizing the log-likelihood-function corresponds to a minimization of the residual sum of squares RSS. If the residual variance σ2 is unknown, it can be estimated via the maximum- likelihood method as (see also Section 1.1.1)
+ˆσ2 = RSS/n.
+From that we obtain
+maxlogL = −
+n 2
+log(2π) −
+n 2
+log(ˆσ2) −
+1 2ˆσ2RSS
+which results in
+maxlogL = −
+n 2
+log(2π) −
+n 2
+log
+(cid:18)RSS n
+(cid:19)
+−
+n 2
+.
+After dropping the constants which are independent of the model, the AIC becomes
+AIC = nlog(RSS/n) + 2p.
+If the residual variance σ2 is known, the AIC is
+AIC =
+RSS σ2 + 2p
+Here, the number of model parameters θ was equal to p. If all considered models have the same number of parameters p, then the model with minimum AIC is equivalent to selecting the model with minimum RSS, and this is the usual objective of a model selection based on least squares. Within nested models, the (log-)likelihood is monotonically increasing and the RSS monotonically decreasing.
+Section 4.2.4, page 31
+11
+2.3.2 Bayes information criterion (BIC)
+Similar to AIC, BIC can be used if the model selection is based on the maximization of the log-likelihood function. The BIC is defined as
+BIC = −2maxlogL + log(n)p
+=
+RSS σ2 + log(n)p if σ2 is known
+2.3.3 Mallows’ Cp
+For known σ2 the Mallow’s Cp is defined as
+Cp =
+RSS σ2 + 2p − n
+If the residual variance σ2 is not known, it can be estimated by regression with the full model (using all variables). If a full model cannot be computed (too many variables, collinearity, etc.), a regression can be performed on the relevant principal components (see Section 3.2.1), and the variance is estimated from the resulting residuals. For the “true” model, Cp is approximately p, the number of parameters used in this model, and otherwise greater than p. Thus a model where Cp is approximately p should be selected, and preferably that model with smallest p.
+2.3.4 Use of the different criteria
+For more than e2 = 7.3 observations, that is 8 observations, the BIC penalizes stronger than the AIC, and therefore provides smaller models.
+(cid:136) AIC ... for descriptive models (cid:136) BIC ... for predictive models (cid:136) The absolute values of AIC or BIC can not be interpreted. (cid:136) Mallows’ Cp is mainly used for stepwise regression (adding or removing one variable at
+a time).
+2.4 Resampling methods
+After choosing a model which provides a good fit to the training data, we want to model the test data as well, with the requirement yTest ≈ ˆf(xTest) ( ˆf was calculated based on the training data only). One could define a loss function L which measures the error between y and ˆf(x), i.e.
+L
+(cid:17) (cid:16) y, ˆf(x)
+=
+(cid:26) (y − ˆf(x))2 |y − ˆf(x)|
+... quadratic error ... absolute error
+The test error is the expected predicted value of an independent test set
+Err = IE
+(cid:104) L
+(cid:16)
+y, ˆf(x)
+(cid:17)(cid:105)
+With a concrete sample, Err can be estimated using
+(cid:99)Err =
+1 n
+n (cid:88)
+i=1
+L
+(cid:16)
+(cid:17) yi, ˆf(xi)
+12
+In case of using the loss function with quadratic error, the estimation of Err is well-known under the name Mean Squared Error (MSE). So, the MSE is defined by
+MSE =
+1 n
+n (cid:88)
+i=1
+(cid:16)
+yi − ˆf(xi)
+(cid:17)2
+Usually there is only one data set available. The evaluation of the model is then done by resampling methods (i.e. cross validation, bootstrap).
+2.4.1 Cross validation
+A given sample is randomly divided into q parts. One part is chosen to be the test set, the other parts are defined as training data. The idea is as follows: for the kth part, k = 1,2,...,q, we fit the model to the other q − 1 parts of the data and calculate the prediction error of the fitted model when predicting the kth part of the data. In order to avoid complicated notation, ˆf denotes the fitted function, computed with the kth part of the data removed. The functions all differ depending on the part left out. The evaluation of the model (calculation of the expected prediction error) is done on the kth part of the data set, i.e. for k = 3
+3 Training Training Test Training Training
+1
+2
+4
+5
+··· ··· Training
+q
+ˆyi = ˆf(xi) represents the prediction for xi, calculated by leaving out the kth part of the data set, with xi allocated in part k. Since each observation exists only once in each test set, we obtain n predicted values ˆyi, i = 1,...,n. The estimated cross validation error is then
+(cid:99)ErrCV =
+1 n
+n (cid:88)
+i=1
+L(yi, ˆyi)
+Choice of q
+The case q = n is known as “leave 1 out cross validation”. In this case the fit is computed using all the data except the ith. Disadvantages of this method are
+(cid:136) high computational effort (cid:136) high variance due to similarity of the n “training sets”.
+A 5 fold or 10 fold cross validation, thus q = 5 or q = 10, should therefore be preferred. With large data sets nTrain/nTest = 2/1 or 1/1 is often used, this means n−n/q
+n/q = 2 1.
+2.4.2 Bootstrap
+The basic idea is to randomly draw data sets with replacement from the training data, each sample the same size as the original training set. This is done q times, producing q data sets. Then we refit the model to each of the bootstrap data sets, and examine the behavior of the fits over the q replications. The mean prediction error then is
+(cid:99)ErrBoot =
+1 q
+1 n
+q (cid:88)
+k=1
+n (cid:88)
+i=1
+L
+(cid:16)
+(cid:17) yi, ˆfk(xi)
+,
+with ˆfk indicating the function assessed on sample k and ˆfk(xi) indicating the prediction of observation xi of the kth data set.
+13
+Problem and possible improvements
+Due to the large overlap in test and training sets, (cid:99)ErrBoot is frequently too optimistic. The probability of an observation being included in a bootstrap data set is 1 − (1 − 1 n)n ≈ 1−e−1 = 0.632. A possible improvement would be to calculate (cid:99)ErrBoot only for those obser- vations not included in the bootstrap data set, which is true for about 1 3 of the observations. “Leave 1 out bootstrap”offers this improvement: The prediction ˆfk(xi) is based only on the data sets which do not include xi:
+(cid:99)ErrBoot−1 =
+1 n
+n (cid:88)
+i=1
+1 |C−i|
+(cid:88)
+k∈C−i
+L
+(cid:16)
+yi, ˆfk(xi)
+(cid:17)
+C−i is the set of indices of the bootstrap samples k that do not contain observation i.
+2.5 Procedures for variable selection
+Generally speaking, smaller models are easier to interpret. Redundant or unnecessary vari- ables should be left out. The performance of the model will rarely get worse.
+So far we have defined different options for model comparison. What is still unclear is: How can we efficiently identify models which are promising for the prediction? The naive approach would be to consider all 2p possible models. However, it is clear that this soon results in computational difficulties. For example, if p = 20, which is still a very reasonable number of predictors, we already would have to check more than one million different models. Therefore, an approximate procedure is required, which returns the hopefully best model.
+2.5.1 Stepwise algorithms
+A natural procedure is to start with the full model, including all p input variables, and to eliminate step-by-step that variable which is least important for the prediction. The problem is how to define “least important for the prediction”? A simple procedure would be to use the F-statistic defined in Equation (2.1):
+(cid:136) In the first step we compute the value of the F-statistic by comparing the full model with a model, where the j-th variable has been removed, for j ∈ {1,...,p}. We remove that variable which leads to the smallest F value, if this is not already significant. (cid:136) In the next step we compute the value of the F-statistic by comparing the reduced model with a model, where one of the remaining variables is removed. Again we remove that variable which leads to the smallest F value, except if this indicates significance.
+(cid:136) This is done until all F-statistics are significant.
+This procedure is called backward stepwise selection. One can also do forward stepwise selection, by starting from the empty model, and adding step-by-step that predictor which leads to significance and gives the highest F-value. Also a combination of forward and backward selection is possible.
+Rather than performing sequences of statistical tests, it is also common to use other criteria for model comparison, such as AIC or BIC. Also cross validation would be possible, but this is computationally much more expensive.
+Section 4.2.4, page 31
+14
+2.5.2 Best subset regression
+Best subset regression finds the subset of size k for each k ∈ {0,1,...,p} that gives the smallest AIC (or other criteria). An efficient algorithm is the Leaps and Bounds algorithm which is feasible for a moderate size of p. The idea is to exclude whole branches in the graph of all possible models.
+Leaps and Bounds algorithm: This algorithm creates a tree model and calculates the AIC (or other criteria) for the particular subsets. In Figure 2.1 the AIC for the first subsets is shown. Subsequently, large branches are eliminated by trying to reduce the AIC. The AIC for the model x2 + x3 = 20. Through the elimination of x2 or x3 we get an AIC of at least 18, since the value can reduce by 2p = 2 at most (this follows from the formula for the AIC := nlog(RSS/n) + 2p). By eliminating a regressor in x1 + x2 a smaller AIC (>8) can be obtained. Therefore, the branch x2 + x3 is left out in the future analysis.
+Figure 2.1: Model tree for the leaps and bound algorithm
+Section 4.2.5, page 33
+15
+Part II
+Linear regression
+16
+Chapter 3
+Linear methods
+A linear regression model assumes that the regression function IE(y|x1,x2,...,xp) is linear in the inputs x1,x2,...,xp. Linear models were largely developed in the pre-computer age of statistics, but even in today’s computer era there are still good reasons to study and use them since they are the foundation of more advanced methods. Some important characteristics of linear models are:
+(cid:136) they are simple and (cid:136) often provide an adequate and (cid:136) interpretable description of how the inputs affect the outputs. (cid:136) For prediction purposes they can often outperform fancier nonlinear models, especially
+in situations with
+– small numbers of training data or
+– a low signal-to-noise ratio.
+(cid:136) Finally, linear models can be applied to transformations of the inputs and therefore be
+used to model nonlinear relations.
+3.1 Least squares regression
+This estimator has already been discussed in Section 1.1. If the model assumptions are valid, the LS estimator ˆβ is the best linear unbiased estimator (BLUE). However, is this necessarily desirable? In the end we would like to have an estimator which leads to high prediction quality and simple interpretation, thus including as few input variables as necessary. It could well be that a non-linear estimator, or a biased linear estimator leads to higher prediction accuracy.
+3.1.1 Bias versus variance and interpretability
+The prediction quality can sometimes be improved by shrinkage of the regression coefficients or by setting some coefficients equal to zero. This way the bias increases, but the variance of the prediction reduces significantly which leads to an overall improved prediction. Consider again the linear regression model y = x⊤β + ε, where here x⊤ = (1,x1,...,xp). Then the estimate is ˆy = x⊤ ˆβ, with the LS estimator ˆβ. Prediction quality is often measured by the Mean Squared Error (MSE), or expected squared error, which is defined at the level
+17
+of random variables as MSE= IE[(y − ˆy)2]. Using the model assumptions (in particular for the error term: IE(ε) = 0, Var(ε) = σ2), it is not difficult to show that
+MSE = IE[(y − ˆy)2] = σ2 + Var(ˆy) + [IE(y − ˆy)]2.
+Note that the (square-root of the) last term refers to the bias, because
+IE(y − ˆy) = IE(x⊤(β − ˆβ) + ε) = x⊤IE(β − ˆβ) + 0.
+For an unbiased estimator, this expression is zero, since
+IE(β − ˆβ) = β − IE( ˆβ) = β − β = 0.
+This means that for an unbiased estimator, the MSE is just determined by the variance of the estimates, see Equation (3.1), and of course by the irreducible error σ2. If we consider a biased estimator with a smaller variance, it could happen that the MSE based on this estimator even gets smaller. Such estimators can be obtained from variable selection, by building linear combinations of the regressor variables (Section 3.2), or by shrinkage methods (Section 3.3).
+There is also another problem with the LS estimator, especially if the input variables are In this case the matrix X⊤X can become nearly singular, and thus highly correlated. (X⊤X)−1 will be numerically unstable. This expression is not only involved in the LS estimator ˆβ = (X⊤X)−1X⊤y, but also in the test statistic for the hypothesis test on the regression parameters,
+zj =
+ˆβj ˆσ(cid:112)dj
+,
+where dj represents the jth diagonal element of (X⊤X)−1, see Section 1.1.2. As a conse- quence, also the statistical inference can become very unreliable, and we need to consider different methods which can handle (highly) correlated input variables, or settings where the number of inputs can even exceed the number of observations (p > n).
+3.2 Methods using derived inputs as regressors
+3.2.1 Principal Component Regression (PCR)
+This method looks for transformations of the original data into a new set of uncorrelated variables called principal components. This transformation ranks the new variables according to their importance, which means according to the size of their variance, and eliminates those of least importance. Then a least squares regression on the reduced set of principal components is performed. Since PCR is not scale invariant, one should scale and center the data. The idea is to construct a new matrix Z = XV , which consist of linear combinations with the x-variables with coefficients defined by the matrix V . The matrix V is a (p × p)-matrix, and thus Z has the same dimension as X. The task is to select V such that the columns of Z are uncorrelated and have maximum variance. This can be achieved by a so-called spectral decomposition of the covariance matrix Cov(X):
+Cov(X) = V AV ⊤
+18
+(3.1)
+Here, V = (v1,...,vp) has normed and orthogonal column vectors, i.e. v⊤ i vi = 1, and v⊤ i vj = 0, for i ̸= j = 1,...,p, and thus V ⊤ = V −1. The matrix A is of diagonal form, A = Diag(a1,...,ap). This solution results from an eigenvalue problem, where vi are the eigenvectors of Cov(X), and ai are the corresponding eigenvalues: a1 ≥ a2 ... ≥ ap. If Cov(X) is positive definite, all eigenvalues are real, non negative numbers.
+The columns of Z are are called principal components, and we obtain:
+Cov(Z) = V ⊤Cov(X)V = A
+Thus, the variance of the ith principal component is equal to the eigenvalue ai; the variances are ranked in descending order.
+In the following we will use the first q (1 ≤ q < p) principal components for regression. The regression model can first be rewritten by using all the principal components:
+y = Xβ + ε
+= XV V ⊤β + ε = Zθ + ε
+The new regression coefficients in this model are denoted by θ, and we have θ = V ⊤β and β = V θ. If we want to use for regression only q < p principal components, then we obtain by the above relation
+y = Z1:qθ1:q + Zq+1:pθq+1:p + ε
+= Z1:qθ1:q + ˜ε.
+In this reduced model we obtain with LS estimation
+ˆθ1:q = (Z⊤
+1:qZ1:q)−1Z⊤
+1:qy.
+If the regression coefficients should be interpreted in terms of the original variables, then a back-transformation is possible by using the above relation,
+˜ˆβ = V1:q
+ˆθ1:q. ˜ˆβ does no longer correspond to the LS estimator from Equation (3.2), except if
+Note that the first q principal components explain all the information of X.
+Section 4.3.2, page 37
+3.2.2 Partial Least Squares (PLS) regression
+This technique also constructs a set of linear combinations of the inputs for regression, but unlike principal components regression it uses y in addition to X for this construction. We Instead of assume that X is centered and – depending on the application – also scaled. estimating the parameters β in the linear model
+yi = x⊤
+i β + εi
+we estimate the parameters γ in the so-called latent variable model
+yi = t⊤
+i γ + ˜εi.
+We assume:
+19
+(3.2)
+(cid:136) The new coefficients γ are of dimension q ≤ p. (cid:136) The values ti are arranged as rows in an (n × q) score matrix T. (cid:136) Due to the reduced dimension, the regression of y on T should be more stable. (cid:136) T can not be observed directly; we obtain each column of T sequentially, for k =
+1,2,...,q, by using the PLS criterion
+wk = argmax
+Cov(y,Xw)
+w
+under the constraints ∥wk∥ = 1 and Cov(Xwk,Xwj) = 0 for 1 ≤ j < k. The vectors wk with k = 1,2,...,q are called loadings, and they are collected in the columns of the matrix W. The score matrix is then
+T = XW,
+and y can be written as:
+y = Tγ + ˜ε
+= (XW)γ + ˜ε = X (Wγ) (cid:124) (cid:123)(cid:122) (cid:125) ˜β
++˜ε ≈ Xβ + ε
+In other words, PLS does a regression on a weighted version of X which contains incomplete or partial information (thus the name of the method). The additional usage of the least squares method for the fit leads to the name Partial Least Squares. Since PLS uses also y to determine the PLS-directions, this method is supposed to have better prediction performance than for instance PCR. In contrast to PCR, PLS is looking for directions with high variance and large correlation with y.
+Section 4.3.3, page 38
+3.2.3 Continuum regression
+This method combines LS-, PC- and PLS-regression. As for PLS regression, the regression is done using y and T = XW, where wk for k = 1,2,...,q ≤ p are obtained by
+wk = argmax
+(cid:110)
+[Cov(y,Xw)]2 [Var(Xw)]
+1−δ−1(cid:111)
+δ
+w
+under the constraint
+∥wk∥ = 1
+and
+Cov(Xwk,Xwj) = 0 for j < k.
+20
+δ is in the range from 0 and 1, and regulates the information content of the X-part, which should be used for the prediction of the y-part. We can identify three special cases:
+δ = 0
+:
+δ 1 − δ
+− 1 = −1
+⇒ wk = argmax
+w
+(cid:26)[Cov(Xw,y)]2 Var(Xw)
+(cid:27)
+...LS regression
+δ = 0.5
+:
+δ 1 − δ
+− 1 = 0
+⇒ wk = argmax
+(cid:8)[Cov(Xw,y)]2(cid:9) ...PLS regression
+w
+δ = 1
+:
+δ 1 − δ
+− 1 → ∞
+⇒ wk = argmax
+{Var(Xw)} ...PC regression
+w
+3.3 Shrinkage methods
+Shrinkage methods keep all variables in the model and assign different (continuous) weights. In this way we obtain a smoother procedure with a smaller variability.
+3.3.1 Ridge regression
+Ridge regression shrinks the coefficients by imposing a penalty on their size. The Ridge coefficients minimize a penalized residual sum of squares,
+ˆβRidge = argmin
+β
+ 
+
+n (cid:88)
+i=1
+(cid:32)
+yi − β0 −
+p (cid:88)
+j=1
+xijβj
+(cid:33)2
++ λ
+p (cid:88)
+j=1
+β2 j
+ 
+
+Here λ ≥ 0 is a complexity parameter that controls the amount of shrinkage: the larger the value of λ, the greater the amount of shrinkage. The coefficients are shrunk towards zero (and towards each other).
+An equivalent way to write the Ridge problem is
+ˆβRidge = argmin
+ 
+n (cid:88)
+(cid:32)
+yi − β0 −
+p (cid:88)
+xijβj
+(cid:33)2 
+β
+
+i=1
+j=1
+
+under the constraint
+p (cid:88)
+β2 j ≤ s,
+j=1
+which makes explicit the size constraint on the parameters. By penalizing the RSS we try to avoid that highly correlated regressors (e.g. xj and xk) cancel each other. An especially large positive coefficient βj can be canceled by a similarly large negative coefficient βk. By imposing a size constraint on the coefficients this phenomenon can be prevented. The Ridge solutions ˆβRidge are not equivariant for different scaling of the inputs, and so one normally standardizes the inputs. In addition, notice that the intercept β0 has been left out of the penalty term. Penalization of the intercept would make the procedure depend on the
+21
+(3.3)
+origin chosen for y; that is adding a constant c to each of the targets yi would not simply result in a shift of the predictions by the same amount c. We center the xij, each xij gets replaced by xij − xj and estimate β0 by y = (cid:80)n i=1 yi/n. The remaining coefficients get estimated by a Ridge regression without intercept, hence the matrix X has p rather than p + 1 columns. Rewriting (3.3) in matrix form,
+RSS(λ) = (y − Xβ)⊤(y − Xβ) + λβ⊤β the solutions become ˆβRidge = (X⊤X + λI)−1X⊤y
+I is the (p × p) identity matrix. Advantages of the just described method are:
+(cid:136) With the choice of quadratic penalty β⊤β, the resulting Ridge regression coefficients
+are again a linear function of y.
+(cid:136) The solution adds a positive constant to the diagonal of X⊤X before inversion. This makes the problem nonsingular, even if X⊤X is not of full rank. This was the main motivation of its introduction around 1970.
+(cid:136) The effective degrees of freedom are
+df(λ) = tr(X(X⊤X + λI)−1X⊤),
+thus
+for λ = 0 ⇒ df(λ) = tr(X⊤X(X⊤X)−1) = tr(Ip) = p
+λ → ∞ ⇒ df(λ) → 0
+In the case of orthogonal inputs, the Ridge coefficients are just a scaled version of the least squares estimates, that is ˆβRidge = γ ˆβ with 0 ≤ γ ≤ 1.
+Relation between Ridge regression and PCR
+In order to get a better insight into the principle of Ridge regression, we go into more detail in the following:
+Singular value decomposition A singular value decomposition of the centered (n × p) input matrix X (here we assume n > p) is of the form
+X = UDV ⊤,
+where U and V are ortho-normal (n×p)- and (p×p) matrices, respectively. The columns of U are spanning the column space of X, and the columns of V are spanning the row space of X. D is a (p × p) diagonal matrix of the so-called singular values of X. We have: d1 ≥ d2 ≥ ··· ≥ dp ≥ 0. The columns of U are the eigen vectors of XX⊤ to the eigen values d2 i, and the columns of V are the eigen vectors of X⊤X to the same eigen values. The singular value decomposition of the centered matrix X is an alternative way to express the principal components of X. The estimated covariance matrix is
+S =
+=
+=
+1 n − 1 1 n − 1 1 n − 1
+X⊤X
+(V DU⊤UDV ⊤)
+V D2V ⊤
+and by (3.4) we obtain
+X⊤X = V D2V ⊤,
+22
+(3.4)
+1
+n−1). D2 = A are which corresponds to the eigen decomposition of X⊤X (and thus of S - up to a factor the corresponding eigen values. As it was already a goal of PCR, also here the principal components of X are required. For the first principal component z1 we have
+z1 = Xv1 = u1d1
+and this components has the largest variance out of all normalized linear compinations of the columns of X. This equals
+Var(z1) = Var(Xv1)
+=
+=
+1 n − 1 1 n − 1
+(u1d1)⊤(u1d1)
+d2 1.
+Using singular decomposition, the vector of fitted values of the LS estimation can be written as
+ˆyLS = X ˆβLS = X(X⊤X)−1X⊤y
+= UDV ⊤(V DU⊤UDV ⊤)−1V DU⊤y = UDV ⊤V D−2V ⊤V DU⊤y = UU⊤y
+U⊤y are coordinates of y with respect to the orthonormal basis U. Now the Ridge solutions can be represented as
+ˆyRidge = X ˆβRidge = X(X⊤X + λI)−1X⊤y
+= UDV ⊤(V DU⊤UDV ⊤ + λI)−1V DU⊤y = UD(V ⊤V D2V ⊤V + λV ⊤V )−1DU⊤y = UD(D2 + λI)−1DU⊤y d2 j d2 j + λ
+p (cid:88)
+u⊤
+=
+uj
+j y
+j=1
+with uj as columns of U, and since λ ≥ 0, we have that d2 j + λ) ≤ 1. Similar to linear regression, Ridge regression computed the coordinates of y with respect to the orthonormal basis U. The coordinates are shrunken by the factor d2 j + λ). This means that the magnitude of shrinkage is increasing with decreasing d2 j.
+j/(d2
+j/(d2
+What is the meaning of a small value of d2 j?
+d2 j is proportional to the variance of the principal component. Ridge regression projects y on the component uj. The smaller d2 j, the more penalty is used along this direction. Here we implicitely assume that y varies more in directions of higher variance of the input variables, which is not necessarily the case.
+Thus, principal component regression is closely related to rigde regression: both methods make use of the principal components of the input matrix X. Ridge regression shrinks the coefficients of the principal components, and the amount of shrinkage depends on the corresponding eigen value. Principal component regression discards the components corre- sponding to the smallest p − q eigen values.
+Section 4.4.1, page 39
+23
+3.3.2 Lasso regression
+The Lasso is a shrinkage method like Ridge, but the L1 norm rather than the L2 norm is used in the constraints. The Lasso estimator is defined by
+ˆβLasso = argmin
+n (cid:88)
+(cid:32)
+yi − β0 −
+p (cid:88)
+xijβj
+(cid:33)2
+β
+i=1
+j=1
+with the constraint
+p (cid:88)
+|βj| ≤ s.
+j=1
+This can also be written into a single objective function, with a tuning parameter λ:
+ˆβLasso = argmin
+ 
+n (cid:88)
+(cid:32)
+yi − β0 −
+p (cid:88)
+xijβj
+(cid:33)2
++ λ
+p (cid:88)
+|βj|
+ 
+β
+
+i=1
+j=1
+j=1
+
+Just as in Ridge regression we standardize the data. The solution for ˆβ0 is y and thereafter we fit a model without an intercept.
+Lasso and Ridge differ in their penalty term. The Lasso solutions are nonlinear and a quadratic programming algorithm is used to compute them. Because of the nature of the constraint, making s sufficiently small will cause some of the coefficients to be exactly 0. Thus the Lasso does a kind of continuous subset selection. If s is chosen larger than s0 = (cid:80)p j=1 |ˆβj| (where ˆβj is the least squares estimate), then the Lasso estimates are the least squares estimates. On the other hand, for s = s0/2, the least squares coefficients are shrunk by about 50% on average. However, the nature of the shrinkage is not obvious. Like the subset size in subset selection, or the penalty in Ridge regression, s should be adaptly chosen to minimize an estimate of expected prediction error.
+Figure 3.1 visualizes the difference in the penalties in case of two parameters. The distribu- tion of the residual sum-of-squares is visualized by the elliptical contours, which are centered at the least-squares estimator. The blue regions refer to the contours of the contraints, left for Lasso (|β1| + |β2| ≤ s), and right for Ridge ((cid:112)β2 2 ≤ s). It is clear that Lasso will more likely lead to a solution where regression coefficients are exactly zero.
+1 + β2
+Section 4.4.2, page 41
+24
+(3.5)
+Figure 3.1: Penalties for Lasso (left) and Ridge (right) regression.
+25
+Chapter 4
+Linear methods in R
+4.1 Least Squares (LS) regression in R
+4.1.1 Parameter estimation
+Here we simulate a data set with a response and 3 explanatory variables. Therefore we know the true regression coefficients, β0 = 0, β1 = 1, β2 = 2 and β3 = 0. Accordingly, the variable x3 has no predictive meaning, and should not be used in the model.
+(cid:136) Generation of the data
+> set.seed(123) > x <- matrix(runif(60), ncol = 3) > y <- x %*% c(1, 2, 0) + 0.1 * rnorm(20) > colnames(x) <- paste("x", 1:3, sep = "") > d <- data.frame(x, y = y) > plot(d)
+0.20.6
+0.51.52.5
+0.00.40.8
+0.00.40.8
+x2
+x1
+x3
+0.20.6
+0.51.52.5
+y
+0.20.6
+0.20.6
+Figure 4.1: Plot of the generated data used for multiple linear regression.
+(cid:136) Model using only a constant term
+26
+> lm0 <- lm(y~1, data = d) > lm0
+Call: lm(formula = y ~ 1, data = d)
+Coefficients: (Intercept) 1.72
+LS regression is computed by lm(). The estimated value of the intercept is β0 = 1.72
+(cid:136) Model with one explanatory variable
+> lm1 <- lm(y~x1, data = d) > lm1
+Call: lm(formula = y ~ x1, data = d)
+Coefficients: (Intercept) 0.9157
+x1 1.4600
+(cid:136) Fit of a full model
+> lm3 <- lm(y~x1+x2+x3, data = d) > lm3
+Call: lm(formula = y ~ x1 + x2 + x3, data = d)
+Coefficients: (Intercept) 0.09585
+x1 0.91834
+x2 1.99804
+x3 -0.08761
+The coefficients from the full model are close to the true coefficients. However, we would prefer a model that excludes x3, so with β3 = 0.
+4.1.2 Tests and confidence intervals (cid:136) Testing the coefficients for significance
+> summary(lm3)
+Call: lm(formula = y ~ x1 + x2 + x3, data = d)
+Residuals:
+Max -0.11566 -0.06133 -0.01260 0.06785 0.18004
+Min
+1Q
+Median
+3Q
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.260
+(Intercept) 0.09585 0.91834 x1 1.99804 x2 -0.08761 x3 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.08200 0.06623 13.867 2.47e-10 *** 0.08453 23.637 7.18e-14 *** 0.09060 -0.967
+1.169
+0.348
+27
+Residual standard error: 0.08621 on 16 degrees of freedom Multiple R-squared: 0.9882, F-statistic: 446.5 on 3 and 16 DF, p-value: 1.251e-15
+Adjusted R-squared: 0.986
+– The t statistic (see Section 1.1.2) of x1 and x2 is highly significant and the p-value of each variable is below 0.05. Therefore, both variables have a great impact on the explanation of the regressor and the null hypothesis can be rejected. The regressor x3 provides no significant additional contribution.
+– The model provides a good fit (R squared, see Section 2.2), 98.82% of the variance of y can be explained by the model. The value 98.6% of the adjusted R squared is very high as well.
+– > qf(0.95, 3, 16)
+[1] 3.238872
+The value of the “F statistic” (see Section 2.1) of 446.5 is larger than the F quantile F3,16;0.95 = 3.24, therefore the null hypothesis βi = 0,∀ i = 1,...,p can be rejected. This could also be concluded by the p-value that is close to 0.
+– The test statistic from above can be used for the calculation of a confidence interval for ˆβj (see Section 1.1.2). From the approximation of the 95% confidence interval, we obtain for ˆβ1 the interval
+0.91834 ± 2 ∗ 0.06623 = [0.78,1.06]
+and for ˆβ3
+−0.08761 ± 2 ∗ 0.09060 = [−0.27,0.09] The interval for ˆβ1 does not include zero, and thus the null hypothesis can be rejected at a 95% level. The interval for ˆβ3 includes zero, which confirms the acceptance of the null hypothesis due to a p-value of 0.348.
+4.2 Variable selection in R
+4.2.1 Model comparison with anova()
+> anova(lm3)
+Analysis of Variance Table
+Response: y
+Df Sum Sq Mean Sq F value
+Pr(>F)
+1 3.9799 3.9799 535.4639 9.991e-14 *** x1 1 5.9693 5.9693 803.1073 4.199e-15 *** x2 x3 1 0.0070 0.0070 Residuals 16 0.1189 0.0074 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.9351
+0.3479
+An F-test (see Section 2.1) is computed for every additional explanatory variable, starting with the empty model and following the order of the formula. Regressor x3 does not improve the fit of the model and can be left out.
+28
+> lm2 <- lm(y~x1+x2, data=d) > anova(lm0, lm1, lm2, lm3)
+Analysis of Variance Table
+Model 1: y ~ 1 Model 2: y ~ x1 Model 3: y ~ x1 + x2 Model 4: y ~ x1 + x2 + x3
+Res.Df
+RSS Df Sum of Sq
+F
+Pr(>F)
+1 2 3 4 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+19 10.0751 18 6.0951 1 17 0.1259 1 16 0.1189 1
+3.9799 535.4639 9.991e-14 *** 5.9693 803.1073 4.199e-15 *** 0.0070
+0.9351
+0.3479
+Here several nested models (with increasing size) are compared in the specified order. This allows simultaneous testing of the significance of more than one parameter. Here, again, model lm3 does not improve the fit.
+4.2.2 Body fat data
+(cid:136) Scanning of the data and explanation of the variables
+> library("UsingR") > data(fat) > fat <- fat[-c(31,39,42,86), -c(1,3,4,9)]# strange values, not use all variables > attach(fat)
+The data set “fat” consists of 15 physical measurements of 251 men. The data can be found in the library(UsingR).
+– body.fat: percentage of body-fat calculated by Brozek’s equation – age: age in years – weight: weight (in pounds) – height: height (in inches) – BMI: adiposity index – neck: neck circumference (cm) – chest: chest circumference (cm) – abdomen: abdomen circumference (cm) – hip: hip circumference (cm) – thigh: thigh circumference (cm) – knee: knee circumference (cm) – ankle: ankle circumference (cm) – bicep: extended biceps circumference (cm) – forearm: forearm circumference (cm) – wrist: wrist circumference (cm)
+To measure the percentage of body-fat in the body, an extensive (and expensive) underwater technique has to be performed. The goal here is to establish a model which allows the prediction of the percentage of body-fat with easily measurable and collectible variables in order to avoid the underwater procedure. Nowadays, a new, very effortless method called bio-impedance analysis provides a reliable method to determine the body-fat percentage.
+29
+4.2.3 Full model
+For model evaluation later on, we first split the data randomly into training (2/3) and test data (1/3). The models will be built with the training data, and the evaluation is based on the test data.
+> # randomly split into training and test data: > set.seed(123) > n <- nrow(fat) > train <- sample(1:n,round(n*2/3)) > test <- (1:n)[-train] > model.lm <- lm(body.fat~., data = fat, subset=train) > summary(model.lm)
+Call: lm(formula = body.fat ~ ., data = fat, subset = train)
+Residuals: Min
+Max -9.4688 -2.7421 -0.1162 2.7285 9.0751
+1Q Median
+3Q
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.4260 0.0336 * 0.3773 0.4057 0.1687 0.1144 0.1531
+(Intercept) -41.81344 0.08386 age -0.12932 weight 0.56531 height 1.25203 BMI -0.45496 neck -0.19395 chest 0.79287 abdomen -0.19868 hip 0.08344 thigh 0.05469 knee -0.21770 ankle 0.19942 bicep 0.31561 forearm wrist -1.40770 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+52.38032 -0.798 0.03911 2.144 0.14604 -0.886 0.834 0.67794 0.90522 1.383 0.28652 -1.588 0.13505 -1.436 0.10772 0.17020 -1.167 0.486 0.17164 0.29236 0.187 0.42515 -0.512 1.039 0.19193 1.264 0.24968 0.66446 -2.119
+7.360 1.12e-11 ***
+0.2449 0.6276 0.8519 0.6094 0.3005 0.2082 0.0358 *
+Residual standard error: 4.017 on 150 degrees of freedom Multiple R-squared: 0.7649, F-statistic: 34.86 on 14 and 150 DF, p-value: < 2.2e-16
+Adjusted R-squared: 0.743
+The coefficients for abdomen, hip and wrist have a p-value below 0.05, and therefore the null hypothesis βi = 0 should be rejected for the corresponding variables. Due to the very small p-value of the F-statistic, the null hypothesis βi = 0, ∀ i = 1,...,p should be rejected as well. With an R squared = 0.7447 we can assume that the model provides a good fit. Some measures for the prediction performance like R2 or RMSE for the test data can be computed. This value can be compared with the standard deviation of the response, and it should be a (small) fraction of that.
+> pred.lm <- predict(model.lm,newdata = fat[test,]) > cor(fat[test,"body.fat"],pred.lm)^2 # R^2 for test data
+[1] 0.705793
+> sqrt(mean((fat[test,"body.fat"]-pred.lm)^2)) # RMSE_test
+[1] 3.902328
+> sd(fat[test,"body.fat"]) # sdev of response
+[1] 7.2374
+Figure 4.2 show the measured versus the predicted response variable for the test data, resulting from the full model.
+30
+5101520253035
+y measuredy predicted
+051015202530
+Figure 4.2: Prediction resulting from full model for test data.
+4.2.4 Stepwise selection - automatic model search
+– Stepwise selection with drop1()
+> drop1(model.lm, test="F")
+Single term deletions
+Model: body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + knee + ankle + bicep + forearm + wrist
+Df Sum of Sq
+RSS
+AIC F value
+Pr(>F)
+<none> 1 age 1 weight 1 height 1 BMI 1 neck chest 1 abdomen 1 1 hip 1 thigh 1 knee 1 ankle 1 bicep forearm 1 wrist 1 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+2421.0 473.19
+0.03365 * 0.37729 0.40568 0.16868 0.11442 0.15306
+74.19 2495.1 476.17 4.5966 12.66 2433.6 472.05 0.7842 11.22 2432.2 471.95 0.6953 30.88 2451.8 473.28 1.9130 40.69 2461.6 473.94 2.5213 33.29 2454.2 473.44 2.0623
+874.35 3295.3 522.06 54.1741 1.123e-11 ***
+21.99 2442.9 472.68 1.3626 3.81 2424.8 471.45 0.2363 0.56 2421.5 471.22 0.0350 4.23 2425.2 471.47 0.2622 17.43 2438.4 472.37 1.0796 25.79 2446.7 472.93 1.5978 72.44 2493.4 476.05 4.4883
+0.24493 0.62757 0.85187 0.60937 0.30045 0.20818 0.03578 *
+> summary(update(model.lm,.~.-knee))
+Call: lm(formula = body.fat ~ age + weight + height + BMI + neck +
+chest + abdomen + hip + thigh + ankle + bicep + forearm + wrist, data = fat, subset = train)
+Residuals: Min
+Max -9.549 -2.712 -0.026 2.708 9.129
+1Q Median
+3Q
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.4298 0.0188 *
+(Intercept) -41.27586 0.08647 age
+52.13404 -0.792 2.376
+0.03640
+31
+weight height BMI neck chest abdomen hip thigh ankle bicep forearm wrist --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.12660 0.57007 1.24052 -0.45935 -0.19562 0.79439 -0.19809 0.09236 -0.19809 0.20019 0.32160 -1.41407
+0.14485 -0.874 0.844 0.67529 0.90023 1.378 0.28464 -1.614 0.13432 -1.456 0.10707 0.16962 -1.168 0.16436 0.562 0.41070 -0.482 1.047 0.19127 1.303 0.24683 0.66146 -2.138
+0.3835 0.3999 0.1702 0.1087 0.1474
+7.419 7.93e-12 ***
+0.2447 0.5750 0.6303 0.2969 0.1946 0.0341 *
+Residual standard error: 4.005 on 151 degrees of freedom Multiple R-squared: 0.7649, F-statistic: 37.78 on 13 and 151 DF, p-value: < 2.2e-16
+Adjusted R-squared: 0.7446
+Elimination of the least significant variable, in this case knee is excluded from the model. The R squared (and adjusted R squared) do not change, the fit remains the same.
+– Automatic model search with step()
+> model.lmstep <- step(model.lm) Start: AIC=468.01 body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + knee + ankle + bicep + forearm + wrist
+Df Sum of Sq
+RSS AIC 0.02 2346.2 466.01 0.03 2346.2 466.01 1.50 2347.7 466.11 4.52 2350.7 466.32 5.55 2351.7 466.40 6.37 2352.5 466.45 9.32 2355.5 466.66 17.58 2363.7 467.24 21.32 2367.5 467.50 25.34 2371.5 467.78 2346.2 468.01 31.03 2377.2 468.18 63.04 2409.2 470.38 65.15 2411.3 470.53 852.89 3199.0 517.17
+height - knee - weight - BMI - neck - bicep - ankle - chest - thigh - age <none> - forearm 1 1 - wrist - hip 1 - abdomen 1
+1 1 1 1 1 1 1 1 1 1
+Step: AIC=466.01 body.fat ~ age + weight + BMI + neck + chest + abdomen + hip +
+thigh + knee + ankle + bicep + forearm + wrist
+Df Sum of Sq
+RSS AIC 0.03 2346.2 464.01 5.08 2351.3 464.37 5.54 2351.7 464.40 6.38 2352.6 464.46 9.43 2355.6 464.67 17.60 2363.8 465.24 21.43 2367.6 465.51 25.32 2371.5 465.78 28.47 2374.6 466.00 2346.2 466.01 31.11 2377.3 466.18 63.20 2409.4 468.39 65.24 2411.4 468.53 855.35 3201.5 515.30 ...
+knee - weight - neck - bicep - ankle - chest - thigh - age - BMI <none> - forearm 1 1 - wrist - hip 1 - abdomen 1
+1 1 1 1 1 1 1 1 1
+32
+Step: AIC=457.89 body.fat ~ age + BMI + chest + abdomen + hip + forearm + wrist
+Df Sum of Sq
+AIC 2402.0 457.89 33.75 2435.8 458.19 35.00 2437.0 458.28 42.28 2444.3 458.77 59.35 2461.4 459.92 115.34 2517.4 463.63 163.81 2565.9 466.78 944.72 3346.8 510.62
+RSS
+<none> - forearm 1 1 - age 1 - chest 1 - BMI 1 - hip 1 - wrist - abdomen 1
+step() calls add1() and drop1() as long as the AIC cannot be reduced further.
+– Comparison of the models with anova()
+> anova(model.lmstep, model.lm1,model.lm)
+Analysis of Variance Table
+Model 1: body.fat ~ age + BMI + neck + chest + abdomen + hip + forearm +
+wrist
+Model 2: body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + ankle + bicep + forearm + wrist
+Model 3: body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + knee + ankle + bicep + forearm + wrist
+Res.Df
+RSS Df Sum of Sq
+F Pr(>F)
+1 2 3
+156 2460.7 151 2421.5 5 150 2420.9 1
+39.189 0.4856 0.7866 0.565 0.0350 0.8519
+By using the smaller model model.lmstep, no essential information is lost, therefore it can be used for the prediction instead of model.lm.
+> pred.lmstep <- predict(model.lmstep,newdata = fat[test,]) > cor(fat[test,"body.fat"],pred.lmstep)^2 # R^2 for test data
+[1] 0.70701
+> sqrt(mean((fat[test,"body.fat"]-pred.lmstep)^2)) # RMSE_test
+[1] 3.894187
+In this case, however, we seem to have almost the same performance as for the full model.
+4.2.5 Best subset regression with Leaps and Bound algorithm
+> library(leaps) > lm.regsubset <- regsubsets(body.fat~., data=fat, nbest = 1, subset=train) > summary(lm.regsubset)
+Subset selection object Call: regsubsets.formula(body.fat ~ ., data = fat, nbest = 1, subset = train) 14 Variables (and intercept)
+age weight height BMI neck chest abdomen hip thigh knee
+Forced in Forced out FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+33
+FALSE ankle FALSE bicep FALSE forearm wrist FALSE 1 subsets of each size up to 8 Selection Algorithm: exhaustive
+FALSE FALSE FALSE FALSE
+age weight height BMI neck chest abdomen hip thigh knee ankle bicep forearm wrist
+1 ( 1 ) " " " " 2 ( 1 ) " " "*" 3 ( 1 ) " " "*" 4 ( 1 ) "*" " " 5 ( 1 ) "*" "*" 6 ( 1 ) "*" " " 7 ( 1 ) "*" " " 8 ( 1 ) "*" " "
+" " " " " " "*" " " "*" " " " "
+" " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "*" " " "*" "*" "*" "*" "*" "*"
+"*" "*" "*" "*" "*" "*" "*" "*"
+" " " " " " " " " " " " " " " " " " " " " " " " " " " " "*" " "
+" " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "
+" " " " " " " " "*" "*" " " " "
+" " " " " " " " " " " " "*" "*"
+" " " " "*" "*" "*" "*" "*" "*"
+regsubsets() in library(leaps) provides the “best” model for different sizes of sub- sets. Here only one “best” model per subset size was considered. The ranking of the models is done using the BIC measure.
+−180−190−190−200−200−200−200−210
+(Intercept)ageweightheightBMIneckchestabdomenhipthighkneeanklebicepforearmwrist
+bic
+> plot(lm.regsubset)
+Figure 4.3: Model selection with leaps()
+This plot shows the resulting models and their BIC value, coded in grey scale. The BIC does not improve after the fifth stage (starting from the bottom, see Figure 4.3). The optimal model can then be chosen from the models with “saturated” grey, and preferably that model is taken with the smallest number of variables.
+A more intuitive plot might be that in Figure 4.4, where the BIC values are directly show. On the horizontal axis is the model size. The optimal model is the 2-variable model, with “weight” and “abdomen”.
+> modregsubset.lm <- lm(body.fat~weight+abdomen,data=fat,subset=train) > pred.regsubset <- predict(modregsubset.lm,newdata = fat[test,]) > cor(fat[test,"body.fat"],pred.regsubset)^2 # R^2 for test data
+[1] 0.695192
+> sqrt(mean((fat[test,"body.fat"]-pred.regsubset)^2)) # RMSE_test
+[1] 3.972956
+Here again, the quality of the model does not quite change.
+34
+IndexBIC
+12345678
+−205−200−195−190−185
+Figure 4.4: Model selection with leaps()
+4.3 Methods using derived inputs as regressors in R
+4.3.1 The problem of correlated regressors
+The problem that occurs using correlated regressors is demonstrated using the following regression model:
+y = X + ε,
+ε ∼ N(0,0.25)
+with the regressors
+x1 ∼ U(0,1)
+x2 ∼ U(0,1)
+x3 = x1 + ν3,
+ν3 ∼ U(0,0.1)
+> x1 = runif(100) > y = x1 + 0.5 * rnorm(100) > summary(lm(y ~ x1))
+Call: lm(formula = y ~ x1)
+Residuals:
+Max -0.75618 -0.32178 -0.08323 0.23467 1.61592
+Min
+1Q
+Median
+3Q
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.85
+(Intercept) -0.01688 x1 1.04496 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.08899 -0.190 0.15836
+6.599 2.13e-09 ***
+Residual standard error: 0.4691 on 98 degrees of freedom Multiple R-squared: 0.3076, F-statistic: 43.54 on 1 and 98 DF, p-value: 2.131e-09
+Adjusted R-squared: 0.3006
+> x2 = runif(100) > summary(lm(y ~ x1 + x2))
+Call: lm(formula = y ~ x1 + x2)
+Residuals:
+Max -0.73752 -0.30447 -0.08173 0.19722 1.65282
+Min
+1Q
+Median
+3Q
+35
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.727
+(Intercept) 0.04586 1.02922 x1 x2 -0.10199 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.13079 0.16062 0.15543 -0.656
+0.351 6.408 5.32e-09 ***
+0.513
+Residual standard error: 0.4705 on 97 degrees of freedom Multiple R-squared: 0.3107, F-statistic: 21.86 on 2 and 97 DF, p-value: 1.456e-08
+Adjusted R-squared: 0.2965
+(cid:136) Adding a highly correlated variable
+> x3 = x1 + 0.1 * runif(100) > summary(lm(y ~ x1 + x3))
+Call: lm(formula = y ~ x1 + x3)
+Residuals:
+Max -0.73356 -0.32976 -0.08911 0.25413 1.58944
+Min
+1Q
+Median
+3Q
+Coefficients:
+Estimate Std. Error t value Pr(>|t|) 0.709 0.195 0.495
+(Intercept) 0.04928 2.19167 x1 -1.16314 x3
+0.375 0.13149 1.68129 1.304 1.69775 -0.685
+Residual standard error: 0.4704 on 97 degrees of freedom Multiple R-squared: 0.311, F-statistic: 21.89 on 2 and 97 DF, p-value: 1.428e-08
+Adjusted R-squared: 0.2968
+The fit of the model (R squared) does not change when x3 is added, but now none of the coefficients is significant. To estimate the amount of collinearity, one could look at the correlation between the x-variables. Another option is the function alias(), which identifies exact linear dependencies.
+> alias(lm(y ~ x1 + x3))
+Model : y ~ x1 + x3
+Here, there are no exact linear dependencies, but we can create some to test the method:
+> alias(lm(body.fat~., data=fat))
+Model : body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + knee + ankle + bicep + forearm + wrist
+> fat.mod <- fat > fat.mod$nonsense <- fat$neck+2*fat$chest-3*fat$abdomen > alias(lm(body.fat~., data=fat.mod))
+Model : body.fat ~ age + weight + height + BMI + neck + chest + abdomen +
+hip + thigh + knee + ankle + bicep + forearm + wrist + nonsense
+Complete :
+(Intercept) age weight height BMI neck chest abdomen hip thigh knee ankle bicep forearm wrist -3
+nonsense 0
+0
+0
+0
+0
+1
+2
+0
+0
+0
+0
+0
+0
+36
+0
+4.3.2 PCR
+> library(pls) > model.pcr <- pcr(body.fat~., data=fat, scale=TRUE, subset=train, + > summary(model.pcr)
+validation="CV", segments=10, segment.type="random")
+Data:
+X dimension: 165 14
+Y dimension: 165 1
+Fit method: svdpc Number of components considered: 14
+VALIDATION: RMSEP Cross-validated using 10 random segments.
+CV adjCV
+(Intercept) 1 comps 2 comps 3 comps 4 comps 5 comps 6 comps 7 comps 8 comps 9 comps 4.604 4.587
+7.948 7.948
+6.048 6.045
+5.002 4.998
+4.934 4.926
+4.611 4.601
+4.591 4.581
+4.630 4.629
+4.583 4.571
+4.563 4.549
+CV adjCV
+10 comps 11 comps 12 comps 13 comps 14 comps 4.267 4.243
+4.622 4.605
+4.562 4.546
+4.218 4.198
+4.252 4.230
+TRAINING: % variance explained
+X body.fat
+1 comps 2 comps 3 comps 4 comps 5 comps 6 comps 7 comps 8 comps 9 comps 10 comps 98.75 70.62
+64.06 42.46
+75.95 61.20
+82.82 63.06
+87.42 67.96
+90.79 68.43
+93.07 68.56
+95.14 69.96
+96.64 70.57
+97.87 70.60
+X body.fat
+11 comps 12 comps 13 comps 14 comps 100.00 76.49
+99.35 71.47
+99.76 76.29
+99.97 76.30
+Note that the explanatory variables need to be scaled, therefore the option scale=TRUE. The plot (see Figure 4.5 left) suggests to use 12 components. The resulting predictions for the training data are shown in Figure 4.5 (right).
+body.fatnumber of componentsRMSEP
+02468101214
+5678
+body.fat, 12 comps, validationmeasuredpredicted
+10203040
+CVadjCV
+10203040
+Figure 4.5: Validation plot, and measured versus predicted response for PCR.
+The predictions from the test data and some evaluation measure are shown below.
+> pred.pcr <- predict(model.pcr,newdata=fat[test,],ncomp=12) > cor(fat[test,"body.fat"],pred.pcr)^2 # R^2 for test data
+[1] 0.7093229
+> sqrt(mean((fat[test,"body.fat"]-pred.pcr)^2)) # RMSE_test
+[1] 3.878474
+37
+4.3.3 PLS regression
+> library(pls) > model.pls <- plsr(body.fat~., data=fat, scale=TRUE, subset=train, + > summary(model.pls)
+validation="CV", segments=10, segment.type="random")
+Data:
+X dimension: 165 14
+Y dimension: 165 1
+Fit method: kernelpls Number of components considered: 14
+VALIDATION: RMSEP Cross-validated using 10 random segments.
+CV adjCV
+(Intercept) 1 comps 2 comps 3 comps 4 comps 5 comps 6 comps 7 comps 8 comps 9 comps 4.150 4.134
+7.948 7.948
+5.668 5.663
+4.650 4.643
+4.462 4.450
+4.376 4.359
+4.268 4.249
+4.171 4.153
+4.158 4.141
+4.153 4.137
+CV adjCV
+10 comps 11 comps 12 comps 13 comps 14 comps 4.171 4.153
+4.168 4.152
+4.184 4.166
+4.183 4.164
+4.175 4.157
+TRAINING: % variance explained
+X body.fat
+1 comps 2 comps 3 comps 4 comps 5 comps 6 comps 7 comps 8 comps 9 comps 10 comps 97.39 76.37
+63.21 50.35
+75.36 67.86
+80.64 71.64
+84.76 73.62
+88.40 75.13
+90.21 76.18
+92.94 76.30
+94.62 76.33
+95.54 76.36
+X body.fat
+11 comps 12 comps 13 comps 14 comps 100.00 76.49
+97.98 76.45
+98.85 76.48
+99.59 76.49
+Again, the explanatory variables need to be scaled, therefore the option scale=TRUE. The plot (see Figure 4.6 left) suggests to use something like 7 components. The resulting predictions for the training data are shown in Figure 4.6 (right).
+body.fatnumber of componentsRMSEP
+02468101214
+45678
+body.fat, 7 comps, validationmeasuredpredicted
+10203040
+CVadjCV
+10203040
+Figure 4.6: Validation plot, and measured versus predicted response for PLS.
+The predictions from the test data and some evaluation measure are shown below.
+> pred.pls <- predict(model.pls,newdata=fat[test,],ncomp=7) > cor(fat[test,"body.fat"],pred.pls)^2 # R^2 for test data
+[1] 0.7053698
+> sqrt(mean((fat[test,"body.fat"]-pred.pls)^2)) # RMSE_test
+[1] 3.904893
+38
+4.4 Shrinkage methods in R
+4.4.1 Ridge regression
+We recommend to use the implementation in the package glmnet, which is very flexible, combining Ridge and Lasso regression (and several more). In fact, it allows for so-called Elastic Net regression, where the regression coefficients are obtained as
+ˆβEnet = argmin
+β
+ 
+
+1 2n
+n (cid:88)
+i=1
+(cid:32)
+yi − β0 −
+p (cid:88)
+j=1
+xijβj
+(cid:33)2
++ λ
+(cid:34)
+1 − α 2
+p (cid:88)
+j=1
+β2 j + α
+p (cid:88)
+j=1
+|βj|
+(cid:35) 
+
+where α ∈ [0,1]. Setting α = 1 yields Lasso regression (default), and α = 0 is doing Ridge regression.
+Let us fit a Ridge model for the training data of the body fat data set. The solutions of the regression coefficients for different values of λ are computed and visualized in Figure 4.7. With increasing λ, the coefficients are more and more shrunk towards zero. The solution at the very left is the LS solution.
+> library(glmnet) > ridge <- glmnet(as.matrix(fat[train,-1]),fat[train,1],alpha=0) > # print(ridge) > plot(ridge, xvar="lambda")
+02468
+Log LambdaCoefficients
+1414141414
+−1.0−0.50.00.5
+Figure 4.7: Ridge regression coefficients for varying values of the tuning parameter λ. On top we can see the number of variables in the model.
+To identify the appropriate tuning parameter λ, we run a cross-validation routine and plot the result, see Figure 4.8.
+> ridge.cv <- cv.glmnet(as.matrix(fat[train,-1]),fat[train,1],alpha=0)
+Figure 4.8 shows the MSE together with their standard errors. The left dashed line indicates the smallest MSE, and the right dashed line points at the optimal λ for with the MSE is still
+39
+,
+(4.1)
+02468
+203040506070
+Log(l)Mean−Squared Error
+141414141414141414141414141414
+Figure 4.8: Cross-validated MSE for different values of λ in Ridge regression.
+below the bound defined by the smallest MSE plus its standard error. This λ is selected if we go for the “one-standard error rule” (default). The resulting coefficients are:
+> coef(ridge.cv,s="lambda.1se")
+15 x 1 sparse Matrix of class "dgCMatrix"
+s1 (Intercept) -6.62535679 0.09283576 age 0.02096719 weight -0.30278640 height 0.39213822 BMI -0.18245972 neck 0.08950512 chest 0.28760440 abdomen 0.10037199 hip 0.06362998 thigh 0.16234241 knee -0.30045787 ankle 0.12909367 bicep 0.02973365 forearm -0.97794357 wrist
+We can see that some of the coefficients are small, but they are usually different from zero, i.e. no variable selection.
+Finally, with the optimized model we predict the test data, and derive some evaluation characteristics. The model is competitive.
+> pred.ridge <- predict(ridge.cv,newx=as.matrix(fat[test,-1]),s="lambda.1se") > cor(fat[test,"body.fat"],pred.ridge)^2 # R^2 for test data
+lambda.1se [1,] 0.6506468
+> sqrt(mean((fat[test,"body.fat"]-pred.ridge)^2)) # RMSE_test
+[1] 4.25978
+> # plot(fat[test,"body.fat"],pred.ridge) > # abline(c(0,1))
+40
+4.4.2 Lasso regression
+We can essentially use the same code as for Ridge regression, but just omit setting the parameter alpha (default 1). The whole solution path for different values of lambda is computed, and it is visualized in Figure 4.9.
+> library(glmnet) > lasso <- glmnet(as.matrix(fat[train,-1]),fat[train,1]) > # print(lasso) > plot(lasso, xvar="lambda")
+−6−4−202
+1413830
+Log LambdaCoefficients
+−1.5−1.0−0.50.00.51.0
+Figure 4.9: Lasso regression coefficients for varying values of the tuning parameter λ. On top we can see the number of variables in the model.
+To identify the appropriate tuning parameter, we run a cross-validation routine and plot the result, see Figure 4.10.
+> lasso.cv <- cv.glmnet(as.matrix(fat[train,-1]),fat[train,1])
+The resulting coefficients according to the “one-standard-error rule” are:
+> coef(lasso.cv,s="lambda.1se")
+15 x 1 sparse Matrix of class "dgCMatrix"
+0.27613277 . . . 0.58098761 . . . . .
+0.27613277 . . . 0.58098761 . . . . .
+41
+−6−4−202
+203040506070
+Log(l)Mean−Squared Error
+1414131413119865443311110
+Figure 4.10: Cross-validated MSE for different values of λ in Lasso regression.
+forearm wrist
+.
+0.09647471
+We can see that the resulting coefficient vector is sparse, we obtain several zero entries and thus variable selection.
+Finally, with the optimized model we predict the test data, and derive some evaluation characteristics. The model is competitive.
+> pred.lasso <- predict(lasso.cv,newx=as.matrix(fat[test,-1]),s="lambda.1se") > cor(fat[test,"body.fat"],pred.lasso)^2 # R^2 for test data
+lambda.1se [1,] 0.6842545
+> sqrt(mean((fat[test,"body.fat"]-pred.lasso)^2)) # RMSE_test
+[1] 4.078282
+> # plot(fat[test,"body.fat"],pred.lasso) > # abline(c(0,1))
+The resulting predictions from Ridge and Lasso regression are compared in Figure 4.11, and the results seem quite similar.
+4.4.3 Adaptive Lasso
+We consider also a further “variant” of Lasso regression, called the Adaptive Lasso. The estimator is defined as
+ˆβALasso = argmin
+ 
+n (cid:88)
+(cid:32)
+yi − β0 −
+p (cid:88)
+xijβj
+(cid:33)2
++ λ
+p (cid:88)
+ˆwj|βj|,
+ 
+β
+
+i=1
+j=1
+j=1
+
+where ˆwj are pre-defined weights. One can choose the weights as ˆwj = 1/ˆβj,Ridge, thus as the inverse of the j-th component of the Ridge estimator. This adaptive weighting scheme
+42
+(4.2)
+5101520253035
+measuredpredictedLasso regression
+measuredpredictedRidge regression
+051015202530
+101520253035
+051015202530
+Figure 4.11: Measured versus predicted response for the test data, for Ridge (left) and Lasso (right) regression.
+allows to differentiate the amount of shrinkage among the variables: If the Ridge coefficient is large, the contribution to the penaly is smaller, allowing for a bigger value of the Adaptive Lasso coefficient. In contrast, small Ridge coefficients lead to a higher weight, and thus also lead to smaller coefficients.
+The important point is that the Adaptive Lasso estimator enjoys the“oracle”property. This means that it performs as well as if the true underlying model were given in advance (Zuo, 2006, JASA).
+The code is similar as before:
+> coef.ridge <- coef(ridge.cv,s="lambda.1se") > alasso <- glmnet(as.matrix(fat[train,-1]),fat[train,1], + > plot(alasso, xvar="lambda")
+penalty.factor = 1 / abs(coef.ridge[-1]))
+To identify the appropriate tuning parameter, we run a cross-validation routine and plot the result, see Figure 4.13.
+> alasso.cv <- cv.glmnet(as.matrix(fat[train,-1]),fat[train,1], +
+penalty.factor = 1 / abs(coef.ridge[-1]))
+The resulting coefficients according to the “one-standard-error rule” are:
+> coef(alasso.cv,s="lambda.1se")
+15 x 1 sparse Matrix of class "dgCMatrix"
+s1 (Intercept) -11.8063893 age weight height BMI neck chest abdomen hip thigh knee
+. .
+0.1808496 0.1291905 . . 0.5641719 . . .
+43
+−4−202
+Log LambdaCoefficients
+−1.5−1.0−0.50.00.51.0
+13732
+Figure 4.12: Adaptive Lasso regression coefficients for varying values of the tuning parameter λ. On top we can see the number of variables in the model.
+−4−202
+203040506070
+Log(l)Mean−Squared Error
+1413131212117775434422120
+Figure 4.13: Cross-validated MSE for different values of λ in Lasso regression.
+44
+ankle bicep forearm wrist
+. . .
+0.6555183
+Finally, with the optimized model we predict the test data, and derive some evaluation characteristics. The model is competitive.
+> pred.alasso <- predict(alasso.cv,newx=as.matrix(fat[test,-1]),s="lambda.1se") > cor(fat[test,"body.fat"],pred.alasso)^2 # R^2 for test data
+lambda.1se [1,] 0.6986945
+> sqrt(mean((fat[test,"body.fat"]-pred.alasso)^2)) # RMSE_test
+[1] 4.0032
+> # plot(fat[test,"body.fat"],pred.lasso) > # abline(c(0,1))
+Also the regression coefficients can be compared visually, which is done in Figure 4.14. They are not too similar to each other.
+> coef.ridge <- coef(ridge.cv,s="lambda.1se") > coef.lasso <- coef(lasso.cv,s="lambda.1se") > coef.alasso <- coef(alasso.cv,s="lambda.1se") > # plot(as.numeric(coef.ridge)[-1],as.numeric(coef.lasso)[-1]) > # plot(as.numeric(coef.alasso)[-1],as.numeric(coef.lasso)[-1])
+Ridge coefficientsLasso coefficients
+−1.0−0.50.00.51.0
+−1.0−0.50.00.51.0
+−1.0−0.50.00.51.0
+−1.0−0.50.00.51.0
+Adaptive Lasso coefficientsLasso coefficients
+Figure 4.14: Comparison of the regression coefficients (excluding the intercept term).
+45
+Part III
+Linear classification
+46
+Chapter 5
+Linear methods for classification
+Linear classification tries to find linear functions of the form (1.1) which separate the obser- vations into different classes. Observations within one group should have as many similar features as possible whereas observations of different groups should have little in common. If the predictor G(x) takes on values in a discrete set G, we can always divide the input space into different regions corresponding to the classification. The decision boundaries can either be smooth or rough. Assuming that we have K groups and the fitted linear model for the kth regressor variable is ˆfk(x) = ˆβk0 + ˆβ⊤ k x. Then the decision boundary between class k and l is the set of points for which ˆfk(x) = ˆfl(x), that is, {x : (ˆβk0− ˆβl0)+( ˆβk− ˆβl)⊤x = 0}. New data points x can then be classified with this predictor.
+5.1 Linear regression of an indicator matrix
+Here each of the response categories is coded by an indicator variable. Thus if G has K classes, there will be K such indicators
+yk with k = 1,2,...,K
+with
+yk =
+(cid:26) 1 for G = k 0 otherwise
+These response variables are collected in a vector y = (y1,y2,...,yK), and the n training instances form an (n×K) indicator response matrix Y , with 0/1 values as indicators for the class membership. We fit a linear regression model to each of the columns yk of Y which is given by
+ˆβk = (X⊤X)−1X⊤yk with k = 1,2,...,K
+The ˆβk can be combined in a ((p + 1) × K) matrix ˆB since
+ˆB = ( ˆβ1, ˆβ2,..., ˆβK)
+= (X⊤X)−1X⊤(y1,y2,...,yK) = (X⊤X)−1X⊤Y .
+The estimated values are then
+ˆY = X ˆB
+= X(X⊤X)−1X⊤Y
+A new observation x can be classified as follows:
+47
+(cid:136) Compute the K vector of the fitted values
+ˆf(x) =
+(cid:104)
+(1,x⊤) ˆB
+(cid:105)⊤
+=
+(cid:104) ˆf1(x),..., ˆfK(x)
+(cid:105)⊤
+(cid:136) identify the largest component ˆf(x) and classify x accordingly:
+ˆG(x) = argmax
+ˆfk(x)
+k∈G
+Section 6.1, page 55
+5.2 Linear discriminant analysis (LDA)
+5.2.1 Classical LDA
+G consists of K classes. Let the probability of an observation belonging to class k be (the prior probability) πk, k = 1,2,...,K with (cid:80)K k=1 πk = 1. Suppose hk(x) is the density function of x in class G = k. Then
+P(G = k|x) =
+hk(x)πk K (cid:80) l=1
+hl(x)πl
+is the conditional probability that with a given observation x the random variable G is k. hk(x) is often assumed to be the density of a multivariate normal distribution φk
+φk(x) =
+1 (cid:112)(2π)p|Σk|
+exp
+(cid:26)
+−
+(x − µk)⊤Σ−1
+k (x − µk) 2
+(cid:27)
+LDA arises in the special case when we assume that the classes have a common covariance Σk = Σ, k = 1,2,...,K. Comparing these two classes, it is sufficient to look at the log-ratio
+log
+P(G = k|x) P(G = l|x)
+= log
+= log
+φk(x)πk φl(x)πl 1 πk 2 πl
+φk(x) φl(x)
+πk πl
+= log
++ log
+(µk + µl)⊤Σ−1(µk − µl) + x⊤Σ−1(µk − µl)
+−
+The decision boundary between the classes k and l is
+P(G = k|x) = P(G = l|x)
+which is linear in x (in p dimensions this is a hyperplane).
+48
+From the log-ratio we get the linear discriminant function:
+log
+P(G = k|x) P(G = l|x)
+= log(1) = 0 = log
+φk(x)πk φl(x)πl
+= logφk(x) + logπk − logφl(x) − logπl
+= log
+− log
+= −
+1 2
++
+1 2
+1 (2π)p/2|Σ|1/2 − 1 (2π)p/2|Σ|1/2 + x⊤Σ−1x+x⊤Σ−1µk −
+1 2 1 2
+(x − µk)⊤Σ−1(x − µk) + logπk
+(x − µl)⊤Σ−1(x − µl) − logπl
+1 2
+k Σ−1µk + logπk µ⊤ (cid:125) (cid:123)(cid:122) δk(x) 1 2
+(cid:124)
+x⊤Σ−1x−x⊤Σ−1µl +
+l Σ−1µl − logπl (cid:125)
+µ⊤ (cid:123)(cid:122) −δl(x)
+(cid:124)
+The linear discriminant function
+δk(x) = x⊤Σ−1µk −
+1 2
+µ⊤
+k Σ−1µk + logπk
+provides an equivalent description of the decision rule
+G(x) = argmax
+δk(x)
+k
+The observation x is classified to the group where δk(x), k = 1,2,...,K is the largest. x is classified to class k if
+δk(x) > δl(x) ⇐⇒ x⊤Σ−1(µk − µl) −
+1 2
+(µk + µl)⊤Σ−1(µk − µl) > log
+The parameters of the distribution (µk,Σk) as well as the prior probabilities πk are usually unknown and need to be estimated from the training data:
+ˆπk =
+ˆµk =
+nk n (cid:88)
+gi=k
+xi nk
+with nk ... amount of observations in group k
+ˆΣ =
+1 n − K
+K (cid:88)
+k=1
+(cid:88)
+gi=k
+(xi − ˆµk)(xi − ˆµk)⊤
+gi indicates the true group number of observation xi. Using the linear discriminant function we now can estimate the group membership of xi. This gives a value for ˆG(xi), which can now be compared to gi. The aim is correct classification of as many observations as possible. The misclassification rate provides the relative amount of incorrectly classified observations.
+Section 6.2.1, page 56
+49
+πl πk
+5.2.2 Quadratic discriminant analysis (QDA) Just as in LDA we assume a prior probability πk for class k, k = 1,2,...,K with (cid:80)K 1. The conditional probability that G takes on the value k is
+P(G = k|x) =
+φk(x)πk K (cid:80) l=1
+φl(x)πl
+(φ is the density of the multivariate normal distribution). QDA does not assume the covari- ance matrices to be equal, which complicates the formulas. After some calculation we obtain the quadratic discriminant function
+δk(x) = −
+1 2
+log|Σk| −
+1 2
+(x − µk)⊤Σ−1
+k (x − µk) + logπk.
+Observation x is classified to that group which yields the maximal value of the discriminant function. Σk, µk and πk can be estimated from the training data.
+Comparison QDA and LDA
+With LDA we need to estimate much less parameters as with QDA (each covariance matrix ˆΣk). Both methods work surprisingly well, even if the classes are not normally distributed and even if the equality of the covariance matrices is not given. The reason is most likely that the data can only support simple decision boundaries such as linear or quadratic, and the estimates provided via Gaussian models are stable.
+Section 6.2.2, page 59
+5.2.3 Regularized discriminant analysis
+This method is a compromise between linear and quadratic discriminant analysis, that allows to shrink the separate covariances of QDA towards a common covariance as in LDA. These common (pooled) covariance matrices have the form
+ˆΣ =
+1 (cid:80)K k=1 nk
+(cid:32) K (cid:88)
+k=1
+nkˆΣk
+(cid:33)
+with nk as the number of observations per group. With the pooled covariance matrices the regularized covariance matrices have the form
+ˆΣk(α) = αˆΣk + (1 − α)ˆΣ
+with α ∈ [0,1]. α provides a compromise between LDA (α = 0) and QDA (α = 1). The idea is to keep the degrees of freedom flexible. α can be estimated using cross validation.
+Section 6.2.3, page 59
+50
+k=1 πk =
+5.3 Logistic regression
+Logistic regression also deals with the problem of classifying observations that originate from 2 or more groups. The difference to the previous classification methods is that the output of logistic regression includes an inference statistic which provides information about which variables are well suitable for separating the groups, and which provide no contribution to this goal.
+In logistic regression the posterior probabilities of the K classes are modeled by linear func- tions in x, with the constraint that the probabilities remain in the interval [0,1] and that they sum up to 1. Let us consider the following models:
+log
+log
+log
+P(G = 1|x) P(G = K|x) P(G = 2|x) P(G = K|x)
+P(G = K − 1|x) P(G = K|x)
+= β10 + β⊤
+1 x
+= β20 + β⊤ ... = β(K−1)0 + β⊤
+2 x
+K−1x
+Here we chose class K to be the denominator, but the choice of the denominator is arbitrary in the sense that the estimates are equivariant under that choice. After a few calculations we get
+P(G = k|x) = P(G = K|x)exp(cid:8)βk0 + β⊤
+k x(cid:9) for k = 1,2,...,K − 1
+K (cid:88)
+P(G = k|x) = 1 = P(G = K|x)
+(cid:34)
+1 +
+K−1 (cid:88)
+exp(cid:8)βk0 + β⊤
+k x(cid:9)
+(cid:35)
+k=1
+k=1
+P(G = K|x) =
+P(G = k|x) =
+1 +
+1 +
+1
+K−1 (cid:80) l=1
+exp(cid:8)βl0 + β⊤ k x(cid:9) exp(cid:8)βl0 + β⊤
+l x(cid:9)
+exp(cid:8)βk0 + β⊤ K−1 (cid:80) l=1
+l x(cid:9)
+for k = 1,2,...,K − 1
+Special case of K = 2 classes: In this case, the model is
+log
+P(G = 1|x) P(G = 2|x)
+= β0 + β⊤
+1 x
+or
+P(G = 1|x) =
+exp{β0 + β⊤ 1 x} 1 + exp{β0 + β⊤
+1 x}
+P(G = 2|x) =
+1
+1 + exp{β0 + β⊤
+1 x}
+P(G = 1|x) (cid:123)(cid:122) (cid:125) (cid:124) p1(x)
++P(G = 2|x) (cid:123)(cid:122) (cid:125) p2(x)
+(cid:124)
+= 1
+51
+−505
+0.00.20.40.60.81.0
+b0+b1Txp1(x)
+−505
+0.00.20.40.60.81.0
+b0+b1Txp2(x)
+Figure 5.1: Logistic functions p1(x) (left) and p2(x) (right). Values above the dashed lines would be assigned to the corresponding groups.
+Figure 5.1 visualizes the so-called logistic functions, i.e. the probabilities p1(x) (left) and p2(x) (right). A natural cut-off for the assignment of an observations to one of the groups would be 0.5 (dashed lines).
+The parameters can be estimated using the ML method. The log-likelihood function is
+l(β) =
+n (cid:88)
+logpgi(xi;β),
+i=1
+where
+β =
+(cid:18) β0 β1
+(cid:19)
+and xi includes the intercept. pgi is the probability that observation xi belongs to class gi = 1,2. With
+p(x;β) = p1(x;β) = 1 − p2(x;β)
+and an indicator yi = 1 for gi = 1 and yi = 0 for gi = 2, l(β) can be written as
+l(β) =
+n (cid:88)
+{yi logp(xi;β) + (1 − yi)log[1 − p(xi;β)]}
+=
+=
+i=1 n (cid:88)
+i=1 n (cid:88)
+(cid:26)
+yi log
+(cid:20) exp(β⊤xi) 1 + exp(β⊤xi)
+(cid:21)
++ (1 − yi)log
+(cid:20)
+1 −
+exp(β⊤xi) 1 + exp(β⊤xi)
+(cid:8)yiβ⊤xi − yi log(cid:2)1 + exp(β⊤xi)(cid:3) − (1 − yi)log(cid:2)1 + exp(β⊤xi
+(cid:21)(cid:27)
+(cid:3)(cid:9)
+=
+i=1 n (cid:88)
+(cid:8)yiβ⊤xi − log(cid:2)1 + exp(β⊤xi)(cid:3)(cid:9)
+i=1
+52
+To maximize the log-likelihood we set its derivative equal to zero. These score equations are p + 1 nonlinear equations in β of the form
+∂l(β) ∂β
+=
+=
+n (cid:88)
+i=1 n (cid:88)
+(cid:26)
+yixi −
+1 1 + exp(β⊤xi)
+[yi − p(xi;β)]xi = 0.
+exp(β⊤xi)xi
+(cid:27)
+i=1
+To solve these equations, we use the Newton-Raphson algorithm, which requires the second derivative or Hessian matrix:
+∂2l(β) ∂β∂β⊤ = ... = −
+n (cid:88)
+i=1
+p(xi;β)[1 − p(xi;β)]xix⊤ i
+Starting with βold we get
+βnew = βold −
+(cid:18) ∂2l(β) ∂β∂β⊤
+(cid:19)−1 ∂l(β) ∂β
+,
+where the derivatives are evaluated at βold. Matrix notation provides a better insight in that method:
+y ...(n × 1) vector of the yi X ...(n × (p + 1)) matrix of observations xi p...(n × 1) vector of estimated probabilities p(xi,βold) W ...(n × n) diagonal matrix with weights p(xi,βold)(1 − p(xi,βold)) in the diagonal and thus:
+∂l(β) ∂β ∂2l(β) ∂β∂β⊤ = −X⊤WX
+= X⊤(y − p)
+The Newton-Raphson algorithm has the form
+βnew = βold + (X⊤WX)−1X⊤(y − p)
+= (X⊤WX)−1X⊤W(Xβold + W −1(y − p)) = (X⊤WX)−1X⊤W z (cid:125)
+(cid:124)
+(cid:123)(cid:122) weighted LS
+with the adjusted response
+z = Xβold + W −1(y − p) (cid:124) (cid:125)
+(cid:123)(cid:122) adjustment
+.
+This algorithm is also referred to as IRLS (iteratively reweighted LS), since each iteration solves the weighted least squares problem
+βnew ←− argmin
+(z − Xβ)⊤W(z − Xβ).
+β
+Some remarks:
+53
+(cid:136) β = 0 is a good starting value for the iterative procedure, although convergence is
+never guaranteed.
+(cid:136) For K ≥ 3 the Newton-Raphson algorithm can also be expressed as an IRLS algorithm,
+but in this case W is no longer a diagonal matrix.
+(cid:136) The logistic regression is mostly used for modeling and inference. The goal is to
+understand the role of the input variables in explaining the outcome.
+Comparison of logistic regression and LDA
+Logistic regression uses
+log
+P(G = k|x) P(G = K|x)
+= βk0 + β⊤
+k x,
+whereas LDA uses
+log
+P(G = k|x) P(G = K|x)
+πk πK
+1 2 k x
+−
+= log
+= αk0 + α⊤
+(µk + µK)⊤Σ−1(µk − µK) + x⊤Σ−1(µk − µK)
+The linearity in x in LDA is achieved by:
+(cid:136) the assumption of equal covariance matrices (cid:136) the assumption of multivariate normally distributed groups
+Even though the models have the same form, the coefficients are estimated differently. The joint distribution of x and G can be expressed as
+P(x,G = k) = P(x)P(G = k|x)
+Logistic regression does not specify P(x), LDA assumes a mixture model (with φ as a normal distribution):
+P(x) =
+K (cid:88)
+πkφ(x;µk,Σ)
+k=1
+Section 6.3, page 59
+54
+Chapter 6
+Linear methods for classification in R
+6.1 Linear regression of an indicator matrix in R
+(cid:136) Classification with indicator matrix based on the “Pima Indian” data
+> library(mlbench) > data(PimaIndiansDiabetes2) > #plot(PimaIndiansDiabetes2) > pid <- na.omit(PimaIndiansDiabetes2)
+The data consist of a population of 392 women with “Pima Indian” heritage, who live in the area of Phoenix, Arizona.They were tested for diabetes. The goal is to get a classification rule for the diagnosis of diabetes. The variables are:
+– npreg: number of pregnancies
+– glu: plasma glucose concentration (glucose tolerance test)
+– bp: diastolic blood pressure (mm Hg)
+– skin: triceps skin thickness (mm)
+– bmi: BMI
+– ped: diabetes pedigree function
+– age: age in years
+– type: “pos” or “neg” for diabetes diagnosis
+Generation of the indicator matrix for regression:
+> pidind <- pid > ind <- ifelse(pid$diabetes=="neg",0,1) > pidind$diabetes <- cbind(1-ind,ind)
+It would be sufficient to consider only one indicator variable since we have a symmetric problem.
+Random selection (using a fixed random seed) of the training data, and fitting of a linear model:
+> set.seed(101) > train <- sample(1:nrow(pid), 300) > mod.ind <- lm(diabetes~., data=pidind[train,]) > mod.ind
+55
+Call: lm(formula = diabetes ~ ., data = pidind[train, ])
+Coefficients:
+ind
+(Intercept) pregnant glucose pressure triceps insulin mass pedigree age
+2.178e+00 -1.178e+00 1.784e-02 6.594e-03 6.532e-05 1.472e-03 2.171e-04 -2.171e-04 1.115e-02 1.338e-01 6.575e-03
+1.784e-02 -6.594e-03 -6.532e-05 -1.472e-03
+1.115e-02 -1.338e-01 -6.575e-03
+Fitting a linear model to the data yields a regression coefficients ˆβk for each yk. The model is applied to the test data, and the resulting misclassification rate is com- puted.
+> mod.pred <- predict(mod.ind, newdata=pidind[-train,]) > class.pred <- apply(mod.pred,1,which.max) # class prediction > TAB <- table(pid$diabetes[-train], class.pred) > mklrate<-1-sum(diag(TAB))/sum(TAB) > mklrate
+[1] 0.2717391
+The resulting misclassification rate is 0.272. The misclassification rates of different classification methods will be collected in a table and then compared and analyzed throughout the rest of this manuscript.
+INDR LDA QDA RDA GLM GAM knn
+MKR 0.272
+6.2 Linear Discriminant Analysis in R
+6.2.1 Classical LDA
+(cid:136) LDA for 2-dimensional multivariate normally distributed data with parameters µ1,µ2,Σ
+> mu1<-c(0,0) > mu2<-c(3.5,1) > sig<-matrix(c(1.5,1,1,1.5),ncol=2)
+The ellipses in Figure 6.1 are so-called tolerance ellipses which (in case of multivariate normal distribution) include the inner 95% of the data of each group. The LDA separation line was determined using the known population parameters µ1,µ2 andΣ. The command lda() can be found in library(MASS).
+(cid:136) Change of the prior probabilities – see Figure 6.2
+When changing the prior probabilities, the LDA separation line is moved towards the group with smaller prior probability (see Figure 6.2). This is done because LDA minimizes the probability of misclassification.
+(cid:136) Classification of the PimaIndianDiabetes data with lda()
+An advanced form of an evaluation (we could think of an even more advanced form) is as follows:
+56
+−20246
+X1x2
+−2024
+Figure 6.1: LDA separation line using the population parameters and π1 = π2
+−20246
+−2024
+pi1=0.5, pi2=0.5pi1=0.7, pi2=0.3pi1=0.9, pi2=0.1pi1=0.99, pi2=0.01
+X1X2
+Group 1Group 2
+Figure 6.2: Change of the prior probabilities
+57
+> library(MASS) > mypred <- function(object, newdata) UseMethod("mypred", object) > mypred.lda <- function(object, newdata){ + + } > library(ipred) > CEE <- control.errorest(k = 5, nboot=10) > ldacvest <- errorest(diabetes~., data=pid[train,], model=lda, predict=mypred, + > ldacvest
+predict(object, newdata = newdata)$class
+est.para=CEE)
+Call: errorest.data.frame(formula = diabetes ~ ., data = pid[train,
+], model = lda, predict = mypred, est.para = CEE)
+5-fold cross-validation estimator of misclassification error
+Misclassification error: 0.2167
+> ldabest <- errorest(diabetes~., data=pid[train,], model=lda,predict=mypred, + > ldabest
+estimator="boot", est.para=CEE)
+Call: errorest.data.frame(formula = diabetes ~ ., data = pid[train,
+], model = lda, predict = mypred, estimator = "boot", est.para = CEE)
+Bootstrap estimator of misclassification error with 10 bootstrap replications
+Misclassification error: 0.2197 Standard deviation: 0.0152
+The command errorest() can be found in library(ipred) and can be used to estimate the misclassification rate with cv or bootstrap.
+A simple evaluation based on just one training and test data set can give quite unreliable results:
+> set.seed(101) > train <- sample(1:nrow(pid), 300) > mod.lda <- lda(diabetes~.,data=pid[train,]) > TAB <- table(pid[-train,]$diabetes,mypred(mod.lda,pid[-train,])) > mkrlda <- 1-sum(diag(TAB))/sum(TAB) > mkrlda
+[1] 0.2717391
+INDR LDA QDA RDA GLM GAM knn
+MKR 0.272
+0.272
+58
+6.2.2 QDA
+(cid:136) Classification of the PimaIndianDiabetes data with qda()
+> set.seed(101) > train <- sample(1:nrow(pid), 300) > mod.qda <- qda(diabetes~.,data=pid[train,]) > predictqda <- predict(mod.qda, pid[-train,]) > TAB <- table(pid$diabetes[-train],predictqda$class) > mkrqda <- 1-sum(diag(TAB))/sum(TAB) > mkrqda
+[1] 0.2282609
+INDR LDA QDA RDA GLM GAM knn
+MKR 0.272
+0.272
+0.228
+6.2.3 Regularized discriminant analysis
+(cid:136) Classification of the PimaIndianDiabetes data with rda()
+> library(klaR) > mod.rda <- rda(diabetes~.,data=pid[train,]) > predictrda <- predict(mod.rda, pid[-train,]) > TAB <- table(pid$diabetes[-train], predictrda$class) > mkrrda <- 1-sum(diag(TAB))/sum(TAB) > mkrrda
+[1] 0.2717391
+INDR LDA QDA RDA GLM GAM knn 0.272
+MKR 0.272
+0.272
+0.228
+6.3 Logistic regression in R
+(cid:136) Fit of a model with glm()
+Logistic regression can be carried out with the function glm() under the model of the binomial family. Syntax and interpretation of the inference statistic are in analogy to lm(). The tests for the single coefficients are similar to those from the linear model, but here they are based on the asymptotic normality of the parameter estimates that are MLEs. The standard errors are based on the second derivative of the log-likelihood function at the maximum, which is an indication of how rapidly the function decreases as one moves away from the peak.
+> set.seed(101) > train <- sample(1:nrow(pid), 300) > modelglm <- glm(diabetes~.,data=pid, family=binomial, subset=train) > summary(modelglm)
+Call: glm(formula = diabetes ~ ., family = binomial, data = pid, subset = train)
+Deviance Residuals:
+Median -2.6102 -0.6250 -0.3412
+Min
+1Q
+3Q 0.5927
+Max 2.5695
+59
+Coefficients:
+Estimate Std. Error z value Pr(>|z|)
+(Intercept) -1.069e+01 1.459e+00 -7.328 2.33e-13 *** pregnant glucose pressure triceps insulin mass pedigree age --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+1.842 0.06548 . 5.701 1.19e-08 *** 0.007 0.99442 0.504 0.61413 -1.442e-03 1.471e-03 -0.980 0.32702
+1.209e-01 6.566e-02 4.011e-02 7.035e-03 9.780e-05 1.399e-02 1.001e-02 1.984e-02
+8.354e-02 3.116e-02 9.441e-01 5.113e-01 3.508e-02 2.245e-02
+2.681 0.00734 ** 1.847 0.06481 . 1.563 0.11815
+(Dispersion parameter for binomial family taken to be 1)
+Null deviance: 381.91 on 299 degrees of freedom Residual deviance: 256.75 on 291 degrees of freedom AIC: 274.75
+Number of Fisher Scoring iterations: 5
+The deviances are the negative contributions of each observation to the log-likelihood function. The “Null deviance” refers to the empty model, the “Residual deviance” to the full model.
+(cid:136) Model selection with step(): This is done in the same spirit as for the linear model.
+> mod.glm <- step(modelglm,direction="both")
+Start: AIC=280.09 diabetes ~ pregnant + glucose + pressure + triceps + insulin +
+mass + pedigree + age
+Df Deviance
+AIC 262.20 278.20 262.25 278.25 263.41 279.41 263.61 279.61 263.73 279.73 262.09 280.09 266.27 282.27 266.91 282.91 299.22 315.22 ...
+pressure 1 1 - insulin - triceps 1 - pedigree 1 - pregnant 1 <none> - mass - age - glucose 1 1 1
+Step: AIC=274.91 diabetes ~ glucose + mass + age
+Df Deviance
+AIC 266.91 274.91 265.34 275.34 265.44 275.44 265.50 275.50 266.70 276.70 266.78 276.78 280.12 286.12 285.74 291.74 315.97 321.97
+<none> + triceps 1 + pregnant 1 + pedigree 1 1 + insulin + pressure 1 1 - mass 1 - age 1 - glucose
+The result after stepwise logistic regression is a smaller model that should be able to have a better prediction performance than the full model. The inference statistic tells which variables are significantly contributing to the group separation:
+60
+> summary(mod.glm)
+Call: glm(formula = diabetes ~ pregnant + glucose + mass + pedigree +
+age, family = binomial, data = pid, subset = train)
+Deviance Residuals:
+Median -2.7779 -0.6220 -0.3384
+Min
+1Q
+3Q 0.6104
+Max 2.5562
+Coefficients:
+Estimate Std. Error z value Pr(>|z|)
+(Intercept) -10.359955 0.125833 pregnant 0.036388 glucose 0.088938 mass 0.924288 pedigree age 0.035760 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+1.259084 -8.228 < 2e-16 *** 0.065294 0.005806 0.023669 0.507124 0.022372
+1.927 0.053957 . 6.267 3.68e-10 *** 3.758 0.000172 *** 1.823 0.068363 . 1.598 0.109948
+(Dispersion parameter for binomial family taken to be 1)
+Null deviance: 381.91 on 299 degrees of freedom Residual deviance: 257.93 on 294 degrees of freedom AIC: 269.93
+Number of Fisher Scoring iterations: 5
+The two resulting models can be compared within a test which is making use of the fact the approximately, the sum of squared deviances is χ2 distributed with n−(p+1) degrees of freedom, where p is the number of explanatory variables.
+> anova(mod.glm,modelglm,test="Chisq")
+Analysis of Deviance Table
+Model 1: diabetes ~ pregnant + glucose + mass + pedigree + age Model 2: diabetes ~ pregnant + glucose + pressure + triceps + insulin +
+mass + pedigree + age
+Resid. Df Resid. Dev Df Deviance Pr(>Chi)
+1 2
+294 291
+257.93 256.75 3
+1.1776
+0.7584
+The null hypothesis is that the smaller Model 1 is the true one, and this cannot be rejected.
+(cid:136) Prediction of the class membership and presentation of the results, see Figure 6.3
+> plot(predict(mod.glm, pid[-train,]),col= as.numeric(pid$diabetes[-train])+2)
+Note that by default (of the function predict.glm()), the predictions are returned in the scale of the linear predictor, and thus zero is the decision boundary. One could also get predictions in the scale of the response variable (with type="response").
+(cid:136) Comparison of LDA and logistic regression (cid:136) Logistic regression makes no assumption about the distribution. LDA assumes Gaus-
+sian distributions with equal covariances.
+(cid:136) A comparison of the LDA and logistic regression outcome is in Figure 6.4.
+61
+020406080
+IndexPredicted values
+−4−2024
+Figure 6.3: Prediction of the group memberships; the line is the separation from logistic regression, the color is the true group membership
+> modlda <- lda(diabetes~., data = pid[train,]) > plot(predict(mod.glm, pid[-train,]), col=as.numeric(pid$diabetes[-train])+2, +
+pch=as.numeric(predict(modlda,pid[-train,])$class))
+−4−2024
+020406080
+Indexpredict(mod.glm, pid[−train, ])
+Figure 6.4: LDA (symbols) versus logistic regression (line); the color corresponds to the true classes
+(cid:136) Prediction of the PimaIndianDiabetes data with logistic regression
+Here are again two evaluation schemes, the first based on cross-validation, the second based on bootstrap, and the final simple evaluation based on just one training and test set:
+> library(ipred) > mypred <- function(object, newdata) UseMethod("mypred", object) > mypred.glm = function(object, newdata){ LEV = levels(object$model[,1]) + + as.factor(LEV[(predict(object, newdata=newdata, type="response")>0.5)+1]) + }
+62
+> CEE <- control.errorest(k = 5, nboot=10) > logcvest <- errorest(diabetes~., data=pid[train,], model=glm, + > logcvest
+family=binomial(), predict=mypred, est.para=CEE)
+Call: errorest.data.frame(formula = diabetes ~ ., data = pid[train,
+], model = glm, predict = mypred, est.para = CEE, family = binomial())
+5-fold cross-validation estimator of misclassification error
+Misclassification error: 0.2233
+> logbest <- errorest(diabetes~., data=pid[train,], model=glm, + > logbest
+family=binomial(), predict=mypred, estimator="boot", est.para=CEE)
+Call: errorest.data.frame(formula = diabetes ~ ., data = pid[train,
+], model = glm, predict = mypred, estimator = "boot", est.para = CEE, family = binomial())
+Bootstrap estimator of misclassification error with 10 bootstrap replications
+Misclassification error: 0.2082 Standard deviation: 0.0047
+Simpler (but less reliable) evaluation of the misclassification rate:
+> TAB <- table(pid$diabetes[-train],mypred(mod.glm, pid[-train,])) > mkrlog <- 1-sum(diag(TAB))/sum(TAB) > mkrlog
+[1] 0.25
+INDR LDA QDA RDA GLM GAM knn 0.272
+MKR 0.272
+0.272
+0.228
+0.25
+63
+Part IV
+Nonlinear methods
+64
+So far we have used linear models for both regression and classification because
+(cid:136) they are easy to interpret and have a closed solution; (cid:136) with small n and/or large p, linear models are often the only possibility to avoid
+overfitting.
+However, in reality there is often no linear relation, and the errors are not normally dis- tributed. Methods that are not based on linearity are:
+(cid:136) Generalized Linear Models (GLM): The expansion of normally distributed errors to
+the family of exponential distributions like the Gamma or Poisson distribution
+(cid:136) Mixed models: population comes from k different latent classes, which have different
+parameters for the same regression model
+(cid:136) Nonlinear regression: parametric nonlinear relation between regressor and regressand,
+e.g. y = aebx + ε
+65
+Chapter 7
+Basis expansions
+The idea is to augment/replace the vectors of inputs x with transformations of x, and then use linear models in this new space of derived input features. Denote by hm(x) : Rp (cid:55)−→ R the mth transformation of x, m = 1,...,M. We then model
+f(x) =
+M (cid:88)
+βmhm(x).
+m=1
+Some widely used examples are:
+(cid:136) hm(x) = xm, m = 1,...,p (cid:136) hm(x) = x2 j or hm(x) = xjxk (cid:136) hm(x) = log(xi), xj (cid:136) hm(x) = I(Lm ≤ xk < Um)
+... describes the original linear model
+... quadratic transformation
+√
+... nonlinear transformation
+... indicator function, results in models with a constant contribution for xk in the interval [Lm,Um), or piecewise constant in case of more non-overlapping regions.
+7.1
+Interpolation with splines
+A spline is created by joining together several functions [compare Hansen et al., 2006]. The names comes from a tool called“spline”(a tool for curves). This thin flexible rod is fixed by weights and then used to draw curves through the given points. Since polynomials are one of the easiest functions, they are often preferred as basic elements for splines.
+Piecewise polynomials
+We assume x to be univariate. A piecewise polynomial function f(x) is obtained by dividing the domain of x into k + 1 disjoint intervals and defining for each interval (−∞,ξ1), [ξ1,ξ2), ..., [ξk−1,ξk), [ξk,∞) an own polynomial function of order ≤ M. The boundaries of the intervals are called knots. Piecewise constant functions are the easiest of all piecewise poly- nomials. Piecewise polynomials of order M = 2,3,4 are called piecewise linear (quadratic, cubic, etc.) polynomials. To determine a piecewise polynomial function of order M with k knots ξ1,...,ξk we need M(k + 1) parameters, since each of the k + 1 polynomials consists of M coefficients.
+66
+Figure 7.1: Piecewise constant and linear polynomials
+Figure 7.1 shows data generated from the model of the blue continuous line with additional random noise. The data range is split into 3 regions, thus we obtain the knots ξ1 and ξ2. In the upper left picture we fit in each interval a constant function. The basis functions are thus:
+h1(x) = I(x < ξ1),
+h2(x) = I(ξ1 ≤ x < ξ2),
+h3(x) = I(ξ2 ≤ x)
+It is easy to see that the LS solutions for the model f(x) = (cid:80)3 means ˆβm = ¯ym of the y-values in each region. Figure 7.1 upper right shows a piecewise fit by linear functions. Thus we need 3 additional In the lower left plot we also use basis functions, namely hm+3 = hmx for m = 1,2,3. piecewise linear functions but with the constraints of continuity at the knots. These con- straints also lead to constraints on the parameters. For example, at the first knot we require f(ξ− 1 ), and this means that β1 + ξ1β4 = β2 + ξ1β5. Thus the number of parameters is reduced by 1, for 2 knots by 2, and we end up with 4 free parameters in the model.
+m=1 βmhm(x) are the arithmetic
+1 ) = f(ξ+
+These basis functions and the constraints can be obtained in a more direct way by using the following definitions:
+h1(x) = 1,
+h2(x) = x,
+h3(x) = (x − ξ1)+,
+h4(x) = (x − ξ2)+
+where t+ denotes the positive part. The function h3 is shown in the lower right panel of Figure 7.1.
+Splines A spline of order M with knots ξi, i = 1,...,k is a piecewise polynomial function of degree M − 1 which has continuous derivatives up to order M − 2. The general form of the basis functions for splines is
+hj(x) = xj−1,
+j = 1,...,M,
+hM+l(x) = (x − ξl)M−1
++
+,
+l = 1,...,k.
+67
+We have: number of basis functions = M + k = number of parameters (= df).
+A cubic spline (M = 4) with 2 knots has the following basis functions:
+h1(x) = 1, h2(x) = x,
+h3(x) = x2, h4(x) = x3,
+h5(x) = (x − ξ1)3 + h6(x) = (x − ξ2)3 +
+Figure 7.2 shows piecewise cubic polynomials, with increasing order of continuity in the knots. The curve in the lower right picture has continuous derivatives of order 1 and 2, and thus it is a cubic spline.
+Figure 7.2: Piecewise cubic polynomials
+Usually there is no need to go beyond cubic splines. In practice the most widely used orders are M = 1,M = 2 and M = 4.
+The following parameters have to be chosen:
+(cid:136) order M of the splines (cid:136) number of knots (cid:136) placement of knots: chosen by the user, for instance at the appropriate percentiles of
+x (e.g. for k = 3 at the percentiles 25,50,75%).
+The spline bases functions suggested above are not too attractive numerically. The so-called B-spline basis is numerically more suitable, and it is an equivalent form of the basis. In R this function is called bs(), and the argument df allows to select the number of spline basis functions. Natural cubic splines Polynomials tend to be erratic near the lower and upper data range, which can result in poor approximations (Figure 8.7). This can be avoided by using natural cubic splines (Figure 8.8). They have the additional constraint that the function has to be linear beyond the boundary knots. In this way we get back 4 degrees of freedom (two constraints each in both boundary
+68
+regions), which can then be “invested” in a larger number of knots. Natural cubic splines thus have M + k − 4 = 4 + k − 4 = k basis functions (degrees of freedom).
+Section 8.1, page 74
+7.2 Smoothing splines
+This spline method avoids the knot selection problem by controlling the complexity of the fit through regularization. Consider the following problem: among all functions f(x) with two continuous derivatives, find the one that minimizes the penalized residual sum of squares:
+RSS(f,λ) =
+n (cid:88)
+{yi − f(xi)}2 + λ
+(cid:90)
+f′′(t)2dt
+i=1
+The first term measures closeness to the data, the second term penalizes curvature in the function. The smoothing parameter λ establishes a tradeoff between the two. There are two special cases:
+(cid:136) λ = 0: f is any function that interpolates the data (cid:136) λ = ∞: the simple least square fit, where no second derivative can be tolerated (7.1) has a unique minimizer, which is a natural cubic spline with knots at the values xi,i = 1,...,n. It seems that this solution is over parameterized, since n knots correspond to n degrees of freedom. However, the penalty term reduces them, since the spline coefficients are shrunk towards the linear fit. Since the solution is a natural cubic spline, we can write it as
+f(x) =
+n (cid:88)
+Nj(x)θj
+j=1
+where Nj is the jth spline basis function. The criterion (7.1) thus reduces to
+RSS(θ,λ) = (y − Nθ)⊤(y − Nθ) + λθ⊤ΩNθ
+with {N}ij = Nj(xi) and {ΩN}jk = (cid:82) N ′′ The solution is obtained as
+j (t)N ′′
+k(t)dt.
+ˆθ = (N⊤N + λΩN)−1N⊤y which is a generalized form of Ridge regression. The fit of the smoothing spline is given by
+ˆfλ(x) =
+n (cid:88)
+Nj(x)ˆθj,
+j=1
+and it depends on the parameter λ.
+7.2.1 Choice of the degrees of freedom
+Up to now we did not mention how the parameter λ for the smoothing splines should be chosen. In the following we show an intuitive way how this parameter can be specified.
+69
+(7.1)
+A smoothing spline with given λ is an example for a “linear smoother”, since the estimated parameters are a linear combination of the yi. ˆfλ can be computed by
+ˆfλ = N(N⊤N + λΩN)−1N⊤y
+= Sλy
+The fit is linear in y and the finite operator Sλ is known as “smoother matrix”. Due to the linearity, the computation of ˆfλ is independent from y, because Sλ only depends on xi and λ. Let Bξ denote an n × M matrix of M cubic spline basis functions, evaluated at the n training points xi, with knot sequence ξ and M ≪ n. Then
+ˆfλ = Bξ
+(cid:0)B⊤
+ξ Bξ
+(cid:1)−1
+B⊤
+ξ y
+= Hξy
+The linear operator Hξ is a projection operator, also known as “hat matrix”. For Hξ and Sλ we have:
+(cid:136) Both are symmetric, positive semidefinite matrices; (cid:136) HξHξ = Hξ (idempotent), whileSλSλ = ASλ with a positive semidefinite matrix A; (cid:136) rank(Hξ) = M, rank(Sλ) = n.
+The dimension of the projection space is given by trace(Hξ) = trace(B⊤ ξ )−1Bξ) = trace(IM) = M. M also is the number of basis functions, and hence the number of parame- ters. By analogy we define the “effective degrees of freedom” of Sλ by
+ξ Bξ(B⊤
+dfλ = trace(Sλ),
+the sum of the diagonal elements.
+The question now remains how we can determine an optimal value of λ. As cross-validation could be computationally expensive, one can perform a so-called generalized cross-validation (GCV), which is a good approximation of leave-one-out (LOO) cross-validation. For our linear fit we have ˆfλ = Sλy, where the fitted values ˆfλ also depend on λ. One can show that the following equation holds,
+MSELOO(λ) =
+1 n
+n (cid:88)
+i=1
+(cid:104) yi − ˆf−i
+λ (xi)
+(cid:105)2
+=
+1 n
+n (cid:88)
+i=1
+(cid:34)
+yi − ˆfλ(xi) 1 − Sii(λ)
+(cid:35)2
+,
+where ˆf−i λ (xi) is a fit without observation i, and ˆfλ(xi) is a fit to all data, both returning the fitted value for the i-th observation. The value Sii(λ) is the i-th diagonal element of Sλ. Thus, it is not necessary to fit n models to data where the i-observation is omitted. Rather, it is sufficient to fit the model once with all observations.
+Still, sometimes it is difficult to compute the elements Sii(λ) directly. The GCV approxima- tion avoids this by using
+MSEGCV(λ) =
+1 n
+n (cid:88)
+i=1
+(cid:34)
+yi − ˆfλ(xi) 1 − trace(Sλ)/n
+(cid:35)2
+,
+where trace(Sλ) = (cid:80)n there exist methods (average trace method) to approximate trace(Sλ). In the example of the bone density data (Figure 8.12) we obtain:
+i=1 Sii(λ). The idea is thus to replace Sii(λ) by an average value, and
+df(λ) = trace(Sλ) = 12 =⇒ numerical solution: λ = 0.00022
+Section 8.2, page 78
+70
+Chapter 8
+Basis expansions in R
+There are several possibilities in R to fit a nonlinear function. It is important to distinguish the case where (1) a function can be explicitly stated, and based on that a nonlinear op- timization is carried out, or (2) where no functional relationship can be defined, and the task is to “automatically” fit a nonlinear function. In case of (1) one can use the nonlinear least-squares method nls(), or the more general optimization routine optimize(). For the case (2) we have the spline interpolation methods, which are treated in Section 8.1.
+Example for case (1), where an explicit function can be set up: Consider the data set wtloss from library(MASS), which consists of 2 variables with 52 observations each.
+(cid:136) Weight: weight of the patient (in kg) (cid:136) Days: number of days that the patient has been in therapy
+The patient is undergoing a diet which lasts for 8 months. It will be interesting to predict the future weight is the diet continues.
+(cid:136) Fit of a linear model
+> library(MASS) > data(wtloss) > lm1 <- lm(Weight ~ Days, data=wtloss) > plot(Weight ~ Days, data=wtloss) > abline(lm1, col="blue")
+(cid:136) Fit of a linear model with a quadratic term
+> lm2 <- lm(Weight ~ Days + I(Days^2), data=wtloss) > lines(wtloss$Days, predict.lm(lm2), col="green")
+Quadratic regression or, more generally, regression with polynomials allows a good approximation of the data (Figure 8.1, left). However, often this only works in the range of the data and cannot be used for prediction (Figure 8.1, right).
+> plot(Weight~Days, data=wtloss, xlim=c(0,1000), ylim=c(0,400)) > abline(lm1, col="blue") > x=c(wtloss$Days, seq(300,1000,length=50)) > lines(x,lm2$coef[1]+x*lm2$coef[2]+x^2*lm2$coef[3], col="green")
+71
+050100150200250
+DaysWeight
+110130150170
+02004006008001000
+linearquadratic
+0100200300400
+DaysWeight
+linearquadratic
+Figure 8.1: Graphical presentation of the linear and the quadratic fit (left), and their pre- dictions for future observations (right).
+As a way out, the following nonlinear function with an exponential decay is defined, since weight loss is neither linear nor quadratic:
+y = β0 + β12−t/θ + ε
+β0 ... asymptotic final weight (2nd term → 0 for t → ∞) β1 ... final weight loss (starting weight at t = 0 is β0 + β1) θ ... time to reach half of the final weight loss (for t = θ we get β0 + β1/2)
+(cid:136) Nonlinear regression with nls(): needs starting values
+> mod.start <- c(b0=100, b1=85, theta=100) > mod.nls <- nls(Weight ~ b0 + b1 * 2^(-Days/theta), data=wtloss, start=mod.start, trace=TRUE)
+# seems to be reasonable
+162.2385 47.24374 39.27375 39.24470 39.24470
+(1.77e+00): par = (100 85 100) (4.52e-01): par = (86.38065 97.54973 131.3624) (2.72e-02): par = (81.67936 102.3723 141.3258) (9.34e-05): par = (81.37396 102.6839 141.9106) (4.05e-08): par = (81.37382 102.6841 141.9104)
+– The formula for the nonlinear model contains the variables as well as the param-
+eters.
+– Parameters are estimated through iterative numeric optimization, the starting values have to be chosen. All variable names in the formula that do not get starting values are treated as data variables.
+– Arguments control and algorithm in nls() allow for a finer control of the nu-
+meric optimization.
+– Faster convergence can be obtained through specification of the first partial deriva-
+tives.
+> lines(x, predict(mod.nls, list(Days=x)), col="orange") > abline(h=81.37 , lty=3, col = "red")
+The resulting fit and prediction is shown in Figure 8.2.
+72
+(cid:136) General optimization with optim()
+– The function optim() allows for a minimization of any (univariate) function.
+– Specification of the function and (optionally) of the gradient of the function.
+– Several algorithms can be chosen, i.e. quasi Newton, conjugate gradient or simu-
+lated annealing.
+– The algorithm L-BFGS-B allows a restriction of the parameter space to a hyper-
+cube: for every variable, an upper and lower boundary can be determined.
+Minimization of the residual sum of squares with optim()
+> funSSR <- function(p){ sum((wtloss$Weight - (p[1] + p[2] * 2^(-wtloss$Days/p[3])))^2) } > mod.opt1 <- optim(mod.start, funSSR) > mod.opt1
+$par
+theta 81.37586 102.68225 141.90608
+b0
+b1
+$value [1] 39.2447
+$counts function gradient NA
+130
+$convergence [1] 0
+$message NULL
+Again, the resulting fit and prediction is shown in Figure 8.2. As it should be, there is practically no difference in the outcome of nls() the optim(), since in this case both are based on minimizing the sum of squared residuals.
+02004006008001000
+0100200300400
+DaysWeight
+linearquadraticnlsoptimSSR
+Figure 8.2: Prediction with the different models and routines.
+73
+(cid:136) Comparison of the functions nls() and optim()
+– The function nls() provides the usual methods such as summary(), predict(),
+etc. Tests for the parameters can be obtained as well.
+> summary(mod.nls)
+Formula: Weight ~ b0 + b1 * 2^(-Days/theta)
+Parameters:
+Estimate Std. Error t value Pr(>|t|)
+81.374 b0 b1 102.684 theta 141.910 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+2.269 2.083 5.295
+35.86 49.30 26.80
+<2e-16 *** <2e-16 *** <2e-16 ***
+Residual standard error: 0.8949 on 49 degrees of freedom
+Number of iterations to convergence: 4 Achieved convergence tolerance: 4.048e-08
+– Those options are not provided in optim():
+> summary(mod.opt1)
+Length Class Mode 3 par 1 value counts 2 convergence 1 0 message
+none- numeric -none- numeric -none- numeric -none- numeric -none- NULL
+In exchange, optim() allows for more flexibility in terms of the specification of the model and provides a wider range of optimization algorithms.
+8.1
+Interpolation with splines in R
+(cid:136) Spline basis functions as defined in Section 7.1: The function below allows to construct
+the spline basis functions as they have been defined in the theoretical part.
+> lecturespl <- function(x, nknots=2, M=4){ + + + + + + + + + + + + + + }
+# nknots ... number of knots -> placed at regular quantiles # M ... M-1 is the degree of the polynomial n <- length(x) # X will not get an intercept column X <- matrix(NA,nrow=n,ncol=(M-1)+nknots) for (i in 1:(M-1)){ X[,i] <- x^i } # now the basis functions for the constraints: quant <- seq(0,1,1/(nknots+1))[c(2:(nknots+1))] qu <- quantile(x,quant) for (i in M:(M+nknots-1)){
+X[,i] <- ifelse(x-qu[i-M+1]<0,0,(x-qu[i-M+1])^(M-1))
+} list(X=X,quantiles=quant,xquantiles=qu)
+74
+Consider a simulated data set according to a sine function, see R code below and Figure 8.3.
+> x <- seq(1,10,length=100) > y <- sin(x) + 0.1 * rnorm(x) > x1 <- seq(-1,12,length=100) > plot(x, y, xlim = range(x1))
+246810
+−1.00.00.51.0
+xy
+Figure 8.3: Simulated data according to a sine function
+> spl <- lecturespl(x, nknots=2, M=4) > dim(spl$X)
+# generate the bases based on the x data
+# generated matrix with spline basis functions
+[1] 100
+5
+> spl$quantiles
+# quantiles of the knots
+[1] 0.3333333 0.6666667
+> spl$xquantiles
+# corresponding x-positions
+33.33333% 66.66667% 7
+4
+With 2 knots and M = 4 we obtain 5 basis functions. Note that no basis function for the intercept is constructed, since the intercept can be directly obtained in lm(). The corresponding spline basis functions are shown in Figure 8.4.
+0510152025
+246810
+246810
+xKnot−2 basis
+246810
+xCubic basis
+246810
+xKnot−1 basis
+050100150200
+020406080100
+246810
+xLinear basis
+xQuadratic basis
+246810
+02004006008001000
+Figure 8.4: Spline basis functions as defined in the course notes (no function for the intercept) for 2 knots and M = 4.
+The constructed basis functions can now be used to fit the sine function. Since we are looking for a linear relationship between the y variable and the spline bases, the function lm() can be used.
+75
+> spl <- lecturespl(x, nknots=2, M=4) > lm1 <- lm(y ~ spl$X) > pred1 <- predict(lm1,newdata=data.frame(spl$X)) > lines(x,pred1, col="blue")
+The resulting fit is shown in Figure 8.5 as blue line. Obviously, this is still an underfit, and we need to use more spline basis functions. The green line is constructed with 9 basis functions, resulting from using 6 knots and M = 4.
+2 knots6 knots
+024681012
+xy
+−1.00.00.51.0
+Figure 8.5: Sine function fitted by spline basis functions as defined in the course notes.
+(cid:136) Model fit with B-splines
+THe spline basis functions as defined in the course notes are numerically problematic, because huge values could be produced, in particular for the basis functions correspond- ing to higher order. Figure 8.4 already shows that the cubic basis function has large values. B-splines are an alternative way to generate spline basis functions, but they are numerically more stable. The following code shows some examples, and Figure 8.6 shows the resulting B-spline basis functions.
+– Change of the order of the polynomials:
+> library(splines) > matplot(x, bs(x, knots=5, degree=2), type="l",lty=1)
+– Change of the degrees of freedoms (number of spline basis functions):
+> matplot(x, bs(x, df=4, degree=3), type="l",lty=1)
+– Change of the knots:
+> matplot(x, bs(x, knots=c(3,7), degree=3), type="l",lty=1)
+(cid:136) Estimation of the parameters
+As before, lm() can be used to fit the model.
+76
+246810
+0.00.20.40.60.81.0
+xbs(x, knots = 5, degree = 2)
+246810
+0.00.20.40.60.81.0
+xbs(x, df = 4, degree = 3)
+246810
+0.00.20.40.60.81.0
+xbs(x, knots = c(3, 7), degree = 3)
+Figure 8.6: B-spline basis functions with varying degree, knots, and df.
+> lm1B <- lm(y ~ bs(x, df=4)) > lines(x1, predict.lm(lm1B, list(x=x1)), col="blue")
+Here we also use the model for the prediction to an extended x-range * (extrapolation). The result is shown in Figure 8.7 as blue line. The green line shows the same thing, but with more basis functions (df=6).
+024681012
+−1.00.00.51.0
+xy
+df=4df=6
+Figure 8.7: Fit and prediction with B-spline basis functions.
+(cid:136) Usage of natural cubic splines (Figure 8.8)
+The extrapolation outside of the boundary knots is done as linear function, which allows to save parameters.
+> lm3N <- lm(y ~ ns(x, df=6)) > lines(x1, predict.lm(lm3N, list(x=x1)), col="orange")
+77
+xy
+−1.00.00.51.0
+024681012
+Figure 8.8: Fit and prediction with natural cubic splines.
+8.2 Smoothing splines in R
+Smoothing splines solve the knot selection problem. They consist of natural cubic splines with knots at every x data value. However, the resulting matrix with spline basis functions is shrunken according to the tuning parameter. This shrinkage can also be controlled by the parameter df.
+(cid:136) Fit with smooth.spline()
+> m1 <- smooth.spline(x, y, df=6) > plot(x, y, xlim = range(x1), ylim=c(-1.5, 1.5)) > lines(m1, col="green")
+−1.5−0.50.51.5
+024681012
+xy
+Figure 8.9: Fit with smoothing splines.
+(cid:136) Prediction outside the range
+> lines(predict(m1, x1), col="blue")
+(cid:136) Choice of degrees of freedom with cross-validation
+> m2 <- smooth.spline(x, y, cv=TRUE) > plot(x, y, xlim = range(x1), ylim=c(-1.5, 1.5)) > lines(predict(m2, x1), col="green")
+78
+024681012
+−1.5−0.50.51.5
+xy
+Figure 8.10: Prediction at the boundaries with smoothing splines
+024681012
+−1.5−0.50.51.5
+xy
+df=6df=11.7
+Figure 8.11: Choice of degrees of freedom
+79
+(cid:136) Example: smoothing splines with the bone density data
+> library(ElemStatLearn) > data(bone)
+Bone density data of 261 teens from North America. The average age of the teens (age) and the relative change in the bone density (spnbmd) were measured at two consecutive visits.
+> plot(spnbmd ~ age, data=bone, col = ifelse(gender=="male", "blue", "red2"), + > bone.spline.male <- with(subset(bone,gender=="male"), smooth.spline(age, spnbmd, cv=TRUE)) > bone.spline.female <- with(subset(bone, gender=="female"), smooth.spline(age, spnbmd, cv=TRUE)) > lines(bone.spline.male, col="blue") > lines(bone.spline.female, col="red2") > legend("topright", legend=c("Male", "Female"), col=c("blue", "red2"), lwd=2)
+xlab="Age", ylab="Relative Change in Spinal BMD")
+−0.050.000.050.100.150.20
+10152025
+AgeRelative Change in Spinal BMD
+MaleFemale
+Figure 8.12: Smoothing spline fits for the bone density data.
+The tuning parameters for both fits were selected by cross-validation. For the males we obtain df = 5.62, corresponding to λ = 0.0073027, and for the femails we get df = 8.17, corresponding to λ = 0.0013912.
+80
+Chapter 9
+Generalized Additive Models (GAM)
+For GAM’s the weighted sum of the regressor variables is replaced by a weighted sum of transformed regressor variables [see Hand et al., 2001]. In order to achieve more flexibility, the relations between y and x are modeled in a non-parametric way, for instance by cubic splines. This allows to identify and characterize nonlinear effects in a better way.
+9.1 General aspects on GAM
+GAM’s are generalizations of Generalized Linear Models (GLM) to nonlinear functions. Let us consider the special case of multiple linear regression. There, we model the conditional expectation of y by a linear function:
+IE(y|x1,x2,...,xp) = α + β1x1 + ... + βpxp
+A generalization is to use unspecified nonlinear (but smooth) functions fj instead of the original regressor variables xj.
+IE(y|x1,x2,...,xp) = α + f1(x1) + f2(x2) + ... + fp(xp)
+Another regression model is the logistic regression model, which is in case of 2 groups
+log
+(cid:18) µ(x)
+1 − µ(x)
+(cid:19)
+= α + β1x1 + ... + βpxp,
+where µ(x) = P(y = 1|x). The generalization with nonlinear functions is called additive logistic regression model, and it replaces the linear terms by (cid:18) µ(x)
+(cid:19)
+log
+1 − µ(x)
+= α + f1(x1) + ... + fp(xp).
+For GLM’s, and analogously for GAM’s, the “left hand side” is replaced by different other functions. The right hand side remains a linear combination of the input variables for GLM, or of nonlinear functions of the input variables for GAM.
+Generally we have for GAM:
+The conditional expectation µ(x) of y is related to an additive function of the predictors via a link function g:
+g [µ(x)] = α + f1(x1) + ... + fp(xp)
+Examples for classical link functions are:
+81
+(cid:136) g(µ) = µ: is the identity link, used for linear and additive models of Gaussian response
+data
+(cid:136) g(µ) = logit(µ) or g(µ) = probit(µ); the probit link function (probit(µ) = Φ−1(µ)) is
+used for modeling binomial probabilities
+(cid:136) g(µ) = log(µ) log-linear or log-additive models for Poisson count data
+All these link functions arise from the exponential family, which forms the class of generalized linear models. Those are all extended in the same way to generalized additive models.
+9.2 Parameter estimation with GAM
+The model has the form
+yi = α +
+p (cid:88)
+fj(xij) + εi,
+i = 1,...,n
+j=1
+with IE(εi) = 0. Given observations (xi,yi), a criterion like the penalized residual sum of squares (PRSS) can be specified for this problem:
+PRSS(α,f1,f2,...,fp) =
+n (cid:88)
+(cid:40)
+yi − α −
+p (cid:88)
+fj(xij)
+(cid:41)2
++
+p (cid:88)
+λj
+(cid:90)
+f ′′ j (tj)2dtj
+i=1
+j=1
+j=1
+(cid:82) f ′′ j (tj)2 is an indicator for how much the function is ≥ 0. With linear fj, the integral is 0, nonlinear fj have values larger than 0. λj are tuning parameters. They regularize the tradeoff between the fit of the model and the roughness of the function. The larger the λj, the smoother the function. It can be shown, that (independent of the choice of λj) an additive model with cubic splines minimizes the PRSS. Each of the functions fj is a cubic spline in the component xj with knot xij,i = 1,...,n. Without the following restrictions, no uniqueness can be obtained:
+n (cid:88)
+i=1
+fj(xij) = 0 ∀j =⇒ ˆα =
+1 n
+n (cid:88)
+i=1
+yi =: ave(yi)
+and the non-singularity of X.
+82
+Iterative algorithm for finding the solution:
+1. Initialization of ˆα = ave(yi), ˆfj ≡ 0 ∀i,j 2. For the cycle j = 1,2,...,p,...,1,2,...,p,... yi − ˆα − (cid:80) (cid:80)n
+1. Initialization of ˆα = ave(yi), ˆfj ≡ 0 ∀i,j 2. For the cycle j = 1,2,...,p,...,1,2,...,p,... ˆfk(xik)
+1. Initialization of ˆα = ave(yi), ˆfj ≡ 0 ∀i,j 2. For the cycle j = 1,2,...,p,...,1,2,...,p,... (cid:111)
+(cid:136) ˆfj ← ˆfj − 1 until all ˆfj are stabilized.
+ˆfj(xij)
+i=1
+n
+,i = 1,...,n
+(cid:105)
+The functions Sj[x] = (cid:80)n algorithm is also known as backfitting algorithm.
+k=1 Nk(x)θk denote cubic smoothing splines, see Section 7.2. This
+Let us have a closer look at Step 2: j = 1: In the first iteration, all functions are still set to 0, thus ˆf1 ≡ ... ≡ ˆfp ≡ 0. Thus we
+estimate f1 from: ˆf1 ← S1
+(cid:104)(cid:110)
+yi − ˆα
+(cid:111)
+, i = 1,...,n
+(cid:105)
+This means that the objective function
+n (cid:88)
+{yi − ˆα − f1(xi1)}2 + λ1
+(cid:90)
+f ′′ 1 (t1)2dt1
+i=1
+is minimized, with the solution ˆf1 as cubic smoothing spline.
+j = 2: After centering ˆf1, we estimate f2 by:
+ˆf2 ← S2
+(cid:104)(cid:110)
+(cid:111) yi − ˆα − ˆf1(xi1)
+, i = 1,...,n
+(cid:105)
+This means that the objective function
+n (cid:88)
+(cid:110) yi − ˆα − ˆf1(xi1) − f2(xi2)
+(cid:111)2
++ λ2
+(cid:90)
+f ′′ 2 (t2)2dt2
+i=1
+is minimized, with the solution ˆf2 as cubic smoothing spline. S2 is thus only applied to the residulas of yi − ˆα − f1(xi1), and ˆf2 will thus explain the information which is not yet explained by ˆf1.
+j ≥ 3: Similarly, the subsequent functions are estimated such that the spline functions are determined according to the residuals. In the next cycle, the estimations are improved step by step.
+Section 10, page 84
+83
+Chapter 10
+Generalized additive models in R
+(cid:136) Interpolation with GAM
+> library(mgcv) > m1=gam(y ~ s(x)) > summary(m1)
+Family: gaussian Link function: identity
+Formula: y ~ s(x)
+Parametric coefficients:
+Estimate Std. Error t value Pr(>|t|)
+(Intercept) 0.16112 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.01005
+16.03
+<2e-16 ***
+Approximate significance of smooth terms:
+edf Ref.df
+F p-value
+s(x) 8.37 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+8.89 521 <2e-16 ***
+R-sq.(adj) = 0.979 GCV = 0.011141 Scale est. = 0.010097 n = 100
+Deviance explained = 98.1%
+The spline interpolation fits a new spline basis with least squares. First, a smoothing algorithm is used and then an adequate algorithm estimates all p functions simultane- ously (Figure 10.1). The function gam() can be found in library(mgcv)
+> plot(m1, shade=T, shade.col="orange")
+84
+−1.0−0.50.00.5
+xs(x,8.37)
+246810
+Figure 10.1: Fit with GAM
+(cid:136) Prediction with gam()
+> plot(x, y, xlim=range(x1)) > m1.pred = predict(m1, se.fit=TRUE, data.frame(x = x1)) > lines(x1, m1.pred$fit, col="blue") > lines(x1, m1.pred$fit+2*m1.pred$se, col="orange",lty=2) > lines(x1, m1.pred$fit-2*m1.pred$se, col="orange",lty=2)
+−1.00.00.51.0
+024681012
+xy
+Figure 10.2: Prediction with GAM
+(cid:136) Fit of a model to the PimaIndianDiabetes data with gam()
+> set.seed(101) > train = sample(1:nrow(pid),300) > mod.gam <-gam(diabetes ~ s(pregnant)+s(insulin)+s(pressure)+s(triceps)+s(glucose)+s(age)+s(mass)+s(pedigree), data=pid, family="binomial", subset=train) > summary(mod.gam)
+Family: binomial Link function: logit
+Formula: diabetes ~ s(pregnant) + s(insulin) + s(pressure) + s(triceps) +
+s(glucose) + s(age) + s(mass) + s(pedigree)
+Parametric coefficients:
+Estimate Std. Error z value Pr(>|z|)
+(Intercept) -1.1695 --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+0.1876 -6.234 4.55e-10 ***
+Approximate significance of smooth terms:
+edf Ref.df Chi.sq p-value s(pregnant) 1.907 2.388 1.697 0.4580
+85
+s(insulin) 1.489 1.838 1.245 0.5814 s(pressure) 1.000 1.000 0.154 0.6945 s(triceps) 1.000 1.000 0.367 0.5444 s(glucose) 1.000 1.000 28.730 <2e-16 *** 2.617 3.343 11.134 0.0158 * s(age) 3.042 3.880 8.479 0.0740 . s(mass) s(pedigree) 1.755 2.180 5.046 0.0951 . --- Signif. codes: 0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+R-sq.(adj) = 0.417 UBRE = -0.11844 Scale est. = 1
+Deviance explained = 38.5%
+n = 300
+The estimated degrees of freedom (“edf”) for each term have been computed by GCV. In this case, 3.043 edf’s have been used for the term pregnant. The degrees of freedom of pressure and triceps are each 1. This suggests, that both fits prepresent a straight line (Figure 10.3). The estimated GCV value of 0.14 indicates that the model provides a good fit.
+pregnantpregnants(pregnant,1.91)
+−505
+−505
+glucoseglucoses(glucose,1)
+−505
+−505
+tricepstricepss(triceps,1)
+−505
+pressurepressures(pressure,1)
+−505
+insulininsulins(insulin,1.49)
+ageages(age,2.62)
+−505
+massmasss(mass,3.04)
+−505
+pedigreepedigrees(pedigree,1.76)
+Figure 10.3: Fit of the different terms with additional 95% confidence region
+(cid:136) Prediction with gam()
+> gam.res <- predict(mod.gam, pid[-train,])>0.5 > gam.TAB <- table(pid$diabetes[-train],as.numeric(gam.res)) > gam.TAB
+0 1 0 54 8 1 14 16
+86
+(cid:136) Misclassification rate for test set
+> mkrgam<-1-sum(diag(gam.TAB))/sum(gam.TAB) > mkrgam
+[1] 0.2391304
+INDR LDA QDA RDA GLM GAM knn 0.272
+MKR 0.272
+0.272
+0.228
+0.25
+0.239
+87
+Chapter 11
+Tree-based methods
+Tree-based methods partition the feature space of the x-variables into a set of rectangular regions which should be as homogeneous as possible, and then fit a simple model in each one. In each step, a decision rule is determined by a split variable and a split point which after- wards is used to assign an observation to the corresponding partition. Then a simple model (i.e. a constant) is fit to every region. To simplify matters, we restrict attention to binary partitions, therefore we always have only 2 branches. Mostly, the result is presented in form of a tree and is easy to understand and interpret. Tree models are nonparametric estimation methods, since no assumptions about the distribution of the regressors is made. They are very flexible in application which also makes them computationally intensive, and the results are highly dependent on the observed data. Even a small change in the observations can result in a severe change of the tree structure.
+11.1 Regression trees
+We have data of the form (xi,yi), i = 1,...,n with xi = (xi1,...,xip). The algorithm has to make decision about the:
+(cid:136) Split variable (cid:136) Split point (cid:136) Form of the tree
+Suppose that we have a partition into M regions R1,...,RM and we model the response as a constant cm in each region: f(x) = (cid:80)M m=1 cmI(x ∈ Rm). If we adopt as our criterion minimization of the sum of squares (cid:80)(yi − f(xi))2, it is easy to see that the best ˆcm is just the average of yi in each region:
+ˆcm = ave(yi|xi ∈ Rm)
+Now finding the best binary partition in terms of minimization of the above criterion of the sum of squares is generally computationally infeasible. Hence we look for an approximation of the solution.
+Approximative solution:
+(cid:136) Consider a split variable xj and a split point s and define a pair of half planes by:
+R1(j,s) = {x|xj ≤ s}; R2(j,s) = {x|xj > s}
+88
+(cid:136) Search for the splitting variable xj and for the split point s that solves
+
+
+min j,s
+min c1
+(cid:88)
+xi∈R1(j,s)
+(yi − c1)2 + min c2
+(cid:88)
+xi∈R2(j,s)
+(yi − c2)2
+.
+For any choice of j and s, the inner minimization is solved by
+ˆc1 = ave(yi|xi ∈ R1(j,s)) and ˆc2 = ave(yi|xi ∈ R2(j,s)).
+For each splitting variable, the determination of the split point s can be done very quickly and hence by scanning through all of the inputs, the determination of the best pair (j,s) is feasible. Afterwards, this algorithm is applied on all the other regions. In order to avoid overfitting, we use a tuning parameter, which tries to regulate the model’s complexity. The strategy is to grow a large tree T0, stopping the splitting process when some minimum node size is reached. Then this large tree is pruned using cost complexity pruning. By pruning (thus reduction of inner nodes) of T0, we get a “sub” tree T. We index terminal nodes by m representing region Rm. Let |T| denote the number of terminal nodes in T and
+ˆcm =
+Qm(T) =
+1 nm
+1 nm
+(cid:88)
+xi∈Rm (cid:88)
+xi∈Rm
+yi
+nm ... number of observations in the space Rm
+(yi − ˆcm)2
+and thus we define the cost complexity criterion
+cα(T) =
+|T| (cid:88)
+nmQm(T) + α|T|
+m=1
+which has to be minimized. The tuning parameter α ≥ 0 regulates the compromise between tree size (large α results in a small tree) and goodness of fit (α = 0 results in a full tree T0). The optimal value ˆα for the final tree Tˆα can be chosen by cross-validation. It can be shown that for every α there exists a unique smallest sub-tree Tα ⊆ T0 which minimizes cα. For finding Tα, we eliminate successively that internal node which yields the smallest increase (per node) of (cid:80) m nmQm(T). This is done until no node is left. It can be shown that this sequence of sub-trees must include Tα.
+Section 12.1, page 93
+11.2 Classification trees
+The goal is to partition the x-variables into 1,...,K classes. They are classified by the known output variable y with values between 1,...,K. Afterwards, new data should be assigned to the corresponding class.
+In a node m representing a region Rm with nm observations, let
+ˆpmk =
+1 nm
+(cid:88)
+xi∈Rm
+I(yi = k)
+89
+be the proportion of class k in node m. We classify the observations in node m to that class k(m) for which k(m) = argmaxk ˆpmk. So, the observation is assigned to the majority class in node m.
+Different measures Qm(T) of node impurity include the following: (cid:80)
+1. Misclassification error: 2. Gini index: (cid:80) 3. Entropy or deviance: −(cid:80)K 1 nm
+I(yi ̸= k(m)) = 1 − ˆpmk(m)
+xi∈Rm
+k=1 ˆpmk(1 − ˆpmk)
+k=1 ˆpmk log ˆpmk
+Examples for those criteria for two classes with the proportion p of observations in the second class are (see Figure 11.1):
+1. 1 − max(p,1 − p)
+2. 2p(1 − p)
+3. −plogp − (1 − p)log(1 − p)
+Miscl. rateEntropyGini
+0.00.20.40.60.81.0
+0.00.10.20.30.40.5
+pValue of the criterion
+Figure 11.1: Impurity measures for two class classification
+The three criteria are very similar, but cross-entropy and Gini index are differentiable, and hence more amenable to numerical optimization. In addition, cross-entropy and the Gini index are more sensitive to changes in the node probabilities than the misclassification rate. For this reason, either Gini index or cross-entropy should be used when growing a tree.
+Section 12.2, page 96
+11.3 Random Forests
+It turns out that classification and regression trees are very sensitive to small data changes. For example, it could happen that the inclusion of an additional observation could lead to a different decision already at the first knots, and thus to a completely different structure of the tree.
+Random Forests consist of many classification (regression) trees which are used to make a decision – thus the terminology“forest”. They are“random”because the trees are generated “randomly” by
+(cid:136) using only bootstrap samples instead of the whole data set,
+90
+(cid:136) at each knot only a random selection of the variables is available in order to produce
+very diverse trees.
+The structure of the algorithm is as follows: Step 1:
+(cid:136) Start with b = 1 (first tree). (cid:136) Take a random sample with replacement (= bootstrap sample) of size n, where n is
+the number of observations of the original data set.
+(cid:136) n1 denotes the number of distinct observations (n1 ≈ 2/3n). (cid:136) The remaining n2 = n − n1 samples form the “Out of Bag” (OOB) data.
+Step 2:
+(cid:136) Use this first learning sample to generate a tree. (cid:136) Hereby use at each knot only a random selection of the p variables:
+– classification:
+√
+p
+– regression: p/3
+Step 3: Only with OOB data:
+(cid:136) Compute the tree impurity of the whole tree Tb as πb = (cid:80)|Tb| (cid:136) Permute for each variable j = 1,...,p the values xj and compute the resulting tree
+m=1 nmQm(Tb).
+impurity, denoted as πbj. Define the measure for variable importance as δbj = πbj − πb.
+Step 4: Repeat Steps 1–3 for b = 2,...,B, and compute for each j the measure δ1j,...,δBj. Step 5: Compute the overall variable importance score for the j-th variable as:
+ˆθj =
+1 B
+B (cid:88)
+b=1
+δbj
+Advantages of Random Forests over single trees:
+(cid:136) A single tree has a high variability. Thus, a wrong decision in an “early” knot has
+concequences for all preceeding knots. Many trees reduce this effect.
+Decision:
+(cid:136) Classification: majority decision, i.e. assign an observation to the class which is pre-
+dicted by the majority of the trees.
+(cid:136) Regression: assign the average of all tree predictions.
+Prediction in regression: compute the MSE for the OOB data as follows:
+MSEOOB =
+1 n
+n (cid:88)
+i=1
+(yi − ¯yOOB
+i
+)2
+Here, ¯yOOB The proportion of explained variance is
+is the average of all OOB predictions for the i-th observation.
+i
+1 −
+MSEOOB ˆσ2 y
+,
+91
+with the estimated variance ˆσ2
+y of the response y.
+Random Forests are implemented for instance in the R package randomForest as function randomForest().
+92
+Chapter 12
+Tree based methods in R
+12.1 Regression trees in R
+Use the body fat data for an illustration of regression trees:
+> library("UsingR") > data(fat) > fat <- fat[-c(31,39,42,86), -c(1,3,4,9)] # strange values, not use all variables > # randomly split into training and test data: > set.seed(123) > n <- nrow(fat) > train <- sample(1:n,round(n*2/3)) > test <- (1:n)[-train]
+(cid:136) Growing a regression tree with rpart()
+> library(rpart) > mod.tree <- rpart(body.fat~.,data=fat, cp=0.001, xval=20, subset=train)
+– library(mvpart) or library(tree) can be used as well for growing a tree.
+– rpart() does cv internally. The number of cv steps can be controlled by the
+control parameters.
+(cid:136) Output of the tree
+> mod.tree
+n= 165
+node), split, n, deviance, yval
+denotes terminal node
+1) root 165 9.188831e+03 18.013330
+2) abdomen< 92.25 96 2.733025e+03 13.512500
+4) abdomen< 83.8 43 6.569642e+02 10.288370
+8) abdomen< 79.65 20 2.672720e+02 8.480000
+16) thigh< 50.05 3 3.880667e+01 3.433333 * 17) thigh>=50.05 17 1.385753e+02 9.370588
+34) chest>=88.95 13 9.421077e+01 8.538462
+68) ankle< 22.75 10 2.557600e+01 7.420000
+136) bicep< 30.75 5 4.788000e+00 6.380000 * 137) bicep>=30.75 5 9.972000e+00 8.460000 274) age>=43 3 3.266667e-01 7.333333 * 275) age< 43 2 1.250000e-01 10.150000 * ...
+93
+31) forearm>=29.7 11 3.716182e+01 30.727270 62) BMI< 32.85 9 2.022222e+01 30.144440 * 63) BMI>=32.85 2 1.250000e-01 33.350000 *
+For each branch of the tree we obtain results in the following order:
+– branch number
+– split
+– number of data following the split
+– deviations associated with the split
+– predicted value
+– ”*”, if node is a terminal node
+(cid:136) Plot of the tree
+> plot(mod.tree) > text(mod.tree)
+abdomen< 92.25abdomen< 83.8abdomen< 79.65thigh< 50.05chest>=88.95ankle< 22.75bicep< 30.75age>=43weight>=160.5age< 27.5abdomen>=80.3hip< 94.65ankle>=20.75hip>=100.3forearm< 30.35knee< 39.3abdomen< 87.1BMI>=23.6thigh>=60bicep< 30.85hip>=93.95age< 47.5wrist>=18.35ankle< 24ankle>=23.1bicep< 28.55thigh>=56.45bicep>=32.05abdomen< 88.35abdomen< 100.8wrist>=17.8BMI< 29.45height< 74chest>=101.8abdomen< 97.1wrist>=18.9weight< 202.4ankle>=22.5knee>=40.45thigh>=61.6BMI< 26.6height>=73bicep>=37.9thigh< 67.9age< 46forearm< 29.7neck< 40.35BMI>=29.5BMI< 32.85abdomen>=92.25abdomen>=83.8abdomen>=79.65thigh>=50.05chest< 88.95ankle>=22.75bicep>=30.75age< 43weight< 160.5age>=27.5abdomen< 80.3hip>=94.65ankle< 20.75hip< 100.3forearm>=30.35knee>=39.3abdomen>=87.1BMI< 23.6thigh< 60bicep>=30.85hip< 93.95age>=47.5wrist< 18.35ankle>=24ankle< 23.1bicep>=28.55thigh< 56.45bicep< 32.05abdomen>=88.35abdomen>=100.8wrist< 17.8BMI>=29.45height>=74chest< 101.8abdomen>=97.1wrist< 18.9weight>=202.4ankle< 22.5knee< 40.45thigh< 61.6BMI>=26.6height< 73bicep< 37.9thigh>=67.9age>=46forearm>=29.7neck>=40.35BMI< 29.5BMI>=32.853.43336.387.333310.1512.26712.0756.59.22511.21414.314.9417.37.266710.56715.5339.9513.17511.46714.26718.921.8512.66716.0520.21516.917.921.82924.12514.06717.817.520.4751822.0621.13323.824.03326.4525.529.917.9522.03325.928.4526.127.16731.3530.14433.35
+Figure 12.1: Regression tree of the body fat data
+(cid:136) Predict the response for the test set observations and compute the Root Mean Squared
+Error (RMSE):
+94
+> mod.tree.pred <- predict(mod.tree,newdata=fat[test,]) > RMSE <- sqrt(mean((fat$body.fat[test]-mod.tree.pred)^2)) > RMSE
+[1] 6.363439
+(cid:136) Identify the optimal tree complexity to prune the tree:
+> plotcp(mod.tree)
+123456789111213141516181921222324262728293031323334353738394041424344454647484950Size of tree
+Min + 1 SE
+0.00.20.40.60.81.0
+lllllllllllllllllllllllllllllllllllllllllllll
+lllllllllllllllllllllllllllllllllllllllllllll
+Inf0.210.0730.0420.0260.0210.020.0170.0150.0130.0110.00980.00970.00890.00810.00730.00650.0060.00580.00550.00520.00460.00420.00410.00390.00360.00350.00330.00290.00260.00240.00220.0020.00190.00180.00180.00170.00160.00160.00140.00130.00120.00120.00110.001
+cpX−val Relative Errorll
+Figure 12.2: Regression tree of the body fat data: Plot to identify optimal tree complexity parameter.
+Figure 12.2 reveals (although here not quite clearly) that the optimal tree complexity pa- rameter is 0.042.
+(cid:136) Prune the tree to the optimal complexity, and predict the response for the test set
+observations and the RMSE:
+> mod2.tree <- prune(mod.tree,cp=0.042) > mod2.tree.pred <- predict(mod2.tree,newdata=fat[test,]) > RMSE <- sqrt(mean((fat$body.fat[test]-mod2.tree.pred)^2)) > RMSE
+[1] 5.062448
+(cid:136) Show the final pruned regeression tree:
+> plot(mod2.tree) > text(mod2.tree)
+The final regression tree, see Figure 12.3, is much smaller, and it has clearly higher predictive power.
+95
+abdomen< 92.25abdomen< 83.8abdomen< 79.65thigh< 50.05chest>=88.95ankle< 22.75bicep< 30.75age>=43weight>=160.5age< 27.5abdomen>=80.3hip< 94.65ankle>=20.75hip>=100.3forearm< 30.35knee< 39.3abdomen< 87.1BMI>=23.6thigh>=60bicep< 30.85hip>=93.95age< 47.5wrist>=18.35ankle< 24ankle>=23.1bicep< 28.55thigh>=56.45bicep>=32.05abdomen< 88.35abdomen< 100.8wrist>=17.8BMI< 29.45height< 74chest>=101.8abdomen< 97.1wrist>=18.9weight< 202.4ankle>=22.5knee>=40.45thigh>=61.6BMI< 26.6height>=73bicep>=37.9thigh< 67.9age< 46forearm< 29.7neck< 40.35BMI>=29.5BMI< 32.85abdomen>=92.25abdomen>=83.8abdomen>=79.65thigh>=50.05chest< 88.95ankle>=22.75bicep>=30.75age< 43weight< 160.5age>=27.5abdomen< 80.3hip>=94.65ankle< 20.75hip< 100.3forearm>=30.35knee>=39.3abdomen>=87.1BMI< 23.6thigh< 60bicep>=30.85hip< 93.95age>=47.5wrist< 18.35ankle>=24ankle< 23.1bicep>=28.55thigh< 56.45bicep< 32.05abdomen>=88.35abdomen>=100.8wrist< 17.8BMI>=29.45height>=74chest< 101.8abdomen>=97.1wrist< 18.9weight>=202.4ankle< 22.5knee< 40.45thigh< 61.6BMI>=26.6height< 73bicep< 37.9thigh>=67.9age>=46forearm>=29.7neck>=40.35BMI< 29.5BMI>=32.853.43336.387.333310.1512.26712.0756.59.22511.21414.314.9417.37.266710.56715.5339.9513.17511.46714.26718.921.8512.66716.0520.21516.917.921.82924.12514.06717.817.520.4751822.0621.13323.824.03326.4525.529.917.9522.03325.928.4526.127.16731.3530.14433.35
+Figure 12.3: Final regression tree of the body fat data
+12.2 Classification trees in R
+The data set Spam consists of 4601 observations and 58 variables. The goal is to divide the variable Email in “good” and “spam” emails with classification trees.
+> load("Spam.RData") > names(Spam)
+[1] "make" [5] "our" [9] "order" [13] "people" [17] "business" [21] "your" [25] "hp" [29] "lab" [33] "data" [37] "X1999" [41] "cs" [45] "re" [49] "semicolon" [53] "dollarSign" [57] "capitalTotal"
+"address" "over" "mail" "report" "email" "font" "hpl" "labs" "X415" "parts" "meeting" "edu" "parenthesis" "hashSign" "class"
+"all" "remove" "receive" "addresses" "you" "X000" "george" "telnet" "X85" "pm" "original" "table" "bracket" "capitalAverage" "capitalLongest"
+"X3d" "internet" "will" "free" "credit" "money" "X650" "X857" "technology" "direct" "project" "conference" "exclamationMark"
+> set.seed(100) > train <- sample(1:nrow(Spam), 3065) > library(mvpart) # is already archaived, but one can install the .tar.gz file > tree1 <- rpart(class~., data=Spam, subset=train, method="class",cp=0.001,xval=20) > plot(tree1) > text(tree1)
+96
+exclamationMark< 0.0805remove< 0.045money< 0.01free< 0.165dollarSign< 0.174capitalLongest< 12.5hp>=0.12over< 0.76our< 0.73X650< 0.23you< 6.865hashSign< 0.6665email< 0.745capitalLongest>=16.5font< 0.1capitalAverage< 3.526capitalAverage>=4.367capitalAverage< 8.488address>=0.89capitalLongest< 19.5email>=0.195capitalAverage< 3.418email< 2.415X415>=0.065our< 1.045hp>=0.095free>=0.25re>=0.245receive< 0.095free>=0.495free< 4.23will>=0.13your< 0.31internet>=0.38hp>=0.11capitalLongest< 9.5parenthesis>=0.307george>=0.08hp>=0.105capitalAverage< 2.497edu>=0.145capitalAverage< 2.306free< 0.165remove< 0.045internet< 0.535business< 0.18order< 0.155exclamationMark< 0.2685hp>=0.195george>=0.19exclamationMark< 0.4605remove< 0.025internet< 0.565free< 0.57exclamationMark>=0.359you>=1.34hp>=0.39mail< 0.12meeting>=0.155edu>=0.2pm>=1.92george>=0.2hpl>=0.36X85>=1.975capitalTotal< 22.5X1999>=0.205capitalAverage< 4.559our< 0.145dollarSign< 0.0065re>=0.375your< 0.795exclamationMark< 0.678exclamationMark>=0.0805remove>=0.045money>=0.01free>=0.165dollarSign>=0.174capitalLongest>=12.5hp< 0.12over>=0.76our>=0.73X650>=0.23you>=6.865hashSign>=0.6665email>=0.745capitalLongest< 16.5font>=0.1capitalAverage>=3.526capitalAverage< 4.367capitalAverage>=8.488address< 0.89capitalLongest>=19.5email< 0.195capitalAverage>=3.418email>=2.415X415< 0.065our>=1.045hp< 0.095free< 0.25re< 0.245receive>=0.095free< 0.495free>=4.23will< 0.13your>=0.31internet< 0.38hp< 0.11capitalLongest>=9.5parenthesis< 0.307george< 0.08hp< 0.105capitalAverage>=2.497edu< 0.145capitalAverage>=2.306free>=0.165remove>=0.045internet>=0.535business>=0.18order>=0.155exclamationMark>=0.2685hp< 0.195george< 0.19exclamationMark>=0.4605remove>=0.025internet>=0.565free>=0.57exclamationMark< 0.359you< 1.34hp< 0.39mail>=0.12meeting< 0.155edu< 0.2pm< 1.92george< 0.2hpl< 0.36X85< 1.975capitalTotal>=22.5X1999< 0.205capitalAverage>=4.559our>=0.145dollarSign>=0.0065re< 0.375your>=0.795exclamationMark>=0.678goodgoodgoodgoodgoodspamspamspamgoodspamgoodspamgoodspamgoodspamspamgoodspamgoodspamgoodgoodgoodspamgoodspamspamspamgoodgoodspamgoodgoodgoodspamgoodgoodspamgoodspamgoodgoodspamgoodspamspamspamgoodgoodgoodspamspamspamspamspamgoodspamgoodgoodgoodgoodgoodgoodgoodgoodspamspamgoodspamspamspamspam
+Figure 12.4: Classification tree of spam data
+(cid:136) Prediction with the classification tree
+> tree1.pred <- predict(tree1, Spam[-train,],type="class") > tree1.tab <- table(Spam[-train, "class"], tree1.pred) > tree1.tab
+tree1.pred good spam 54 69 547
+good 866 spam
+(cid:136) Misclassification rate for the test set
+> 1-sum(diag(tree1.tab))/sum(tree1.tab)
+[1] 0.08007812
+(cid:136) Results of the cv
+97
+> printcp(tree1)
+Classification tree: rpart(formula = class ~ ., data = Spam, subset = train, method = "class",
+cp = 0.001, xval = 20)
+Variables actually used in tree construction:
+[1] address [5] capitalTotal [9] exclamationMark font
+business dollarSign
+[13] hashSign [17] mail [21] our [25] re [29] X1999 [33] you
+hp meeting over receive X415 your
+capitalAverage capitalLongest edu free hpl money parenthesis remove X650
+email george internet order pm will X85
+Root node error: 1197/3065 = 0.39054
+n= 3065
+CP nsplit rel error xerror
+xstd 0 1.000000 1.00000 0.022565 1 0.525480 0.52882 0.018723 2 0.438596 0.44110 0.017465 3 0.379282 0.41855 0.017103 4 0.320802 0.35589 0.016000 5 0.298246 0.34336 0.015760 6 0.278195 0.32999 0.015497 7 0.258981 0.28237 0.014487 8 0.245614 0.26316 0.014045 11 0.215539 0.24478 0.013599 12 0.208020 0.24060 0.013495 13 0.201337 0.23141 0.013261 14 0.196324 0.23141 0.013261 16 0.187135 0.21888 0.012932 18 0.178780 0.21888 0.012932 20 0.171261 0.21470 0.012819 22 0.164578 0.20551 0.012566 23 0.162072 0.20635 0.012590 27 0.153718 0.20384 0.012520 32 0.143693 0.20468 0.012543 61 0.087719 0.20886 0.012659 63 0.085213 0.20718 0.012613 68 0.078530 0.20886 0.012659 72 0.074353 0.20718 0.012613
+1 0.4745196 2 0.0868839 3 0.0593150 4 0.0584795 5 0.0225564 6 0.0200501 7 0.0192147 8 0.0133668 9 0.0100251 10 0.0075188 11 0.0066834 12 0.0050125 13 0.0045948 14 0.0041771 15 0.0037594 16 0.0033417 17 0.0025063 18 0.0020886 19 0.0018797 20 0.0016708 21 0.0012531 22 0.0011139 23 0.0010443 24 0.0010000
+> plotcp(tree1,upper="size")
+98
+llllllllllllllllllllllll
+llllllllllllllllllllllll
+Inf0.0590.020.00870.00440.00230.0012
+1357913151923286269Size of tree
+Min + 1 SE
+0.00.20.40.60.81.0
+cpX−val Relative Errorll
+Figure 12.5: Cross-validation results of tree1: cv-error with standard error (blue) and error in test set (green)
+Figure 12.5 shows the complexity of the tree and the cv estimate. The optimal, by cv computed value for α is 0.0035. The optimal size of the tree is approximately 20 nodes.
+(cid:136) Pruning of the tree
+> tree2 <- prune(tree1, cp=0.0035) > plot(tree2) > text(tree2)
+Pruning of the tree with the optimal ˆα.
+(cid:136) Prediction with the new tree
+> tree2.pred <- predict(tree2, Spam[-train,],type="class") > tree2.tab <- table(Spam[-train, "class"], tree2.pred) > tree2.tab
+tree2.pred good spam 52 80 536
+good 868 spam
+12.3 Random Forests in R
+> rf <- randomForest(class~., data=Spam, subset=train, importance=TRUE) > plot(rf) > varImpPlot(rf) > rf.pred <- predict(rf,Spam[-train,]) > rf.tab <- table(Spam[-train, "class"], rf.pred) > 1-sum(diag(rf.tab))/sum(rf.tab)
+99
+exclamationMark< 0.0805remove< 0.045money< 0.01free< 0.165dollarSign< 0.174capitalAverage< 3.418our< 1.045your< 0.31hp>=0.11george>=0.08capitalAverage< 2.306free< 0.165remove< 0.045internet< 0.535business< 0.18hp>=0.195george>=0.19hp>=0.39meeting>=0.155edu>=0.2exclamationMark>=0.0805remove>=0.045money>=0.01free>=0.165dollarSign>=0.174capitalAverage>=3.418our>=1.045your>=0.31hp< 0.11george< 0.08capitalAverage>=2.306free>=0.165remove>=0.045internet>=0.535business>=0.18hp< 0.195george< 0.19hp< 0.39meeting< 0.155edu< 0.2goodgoodspamgoodgoodspamgoodspamgoodspamgoodgoodspamspamspamgoodspamgoodgoodgoodspam
+Figure 12.6: Result of the pruning of tree1
+100
+Chapter 13
+Support Vector Machine (SVM)
+Here we consider the case of K=2, which means there are two groups. When the data clouds of the two groups overlap, the classes are non-separable and linear decision boundaries, among others, perform poorly. Support Vector Machines transform the feature space into a higher-dimensional space and construct linear decision boundaries there.
+13.1 Separating hyperplanes
+Similar to LDA and logistic regression, also here we construct linear decision boundaries based on separating hyperplanes, which should be able to separate different groups in the best possible way. Classifications which are using linear combinations of the input variables and return the sign for the group membership are called“perceptrons”(this expression frequently appears for neural networks).
+Mathematical background
+A hyperplane (see Figure 13.1) is characterized by a set L, defined by
+f(x) = β0 + β⊤x = 0
+with the following properties:
+(cid:136) For any two points x1 und x2 lying in L, we have that
+β⊤(x1 − x2) = 0,
+i.e. β∗ = β
+∥β∥ is orthogonal to L. (cid:136) For a point x0 from L we have β⊤x0 = −β0. (cid:136) As a distance measure (with sign) for any point x to L we can consider
+β∗⊤(x − x0) =
+1 ∥β∥
+(β⊤x + β0) =
+1 ∥f′(x)∥
+f(x),
+i.e. f(x) is proportional to the distance from x to the hyperplane defined by f(x) = 0.
+101
+Figure 13.1: Hyperplane f(x) = β0 + β⊤x = 0
+13.1.1 Perceptron learning algorithm of Rosenblatt
+The perceptron learning algorithm of Rosenblatt looks for a separating hyperplane by min- imizing the distance of misclassified points to the decision boundary. If a response yi = 1 is misclassified, then we have that β0 + x⊤ i β < 0; if yi = −1 is misclassified, then we have β0 + x⊤
+i β > 0. We thus minimize
+D(β0,β) = −
+(cid:88)
+yi(β0 + x⊤
+i β)
+i∈M
+where M contains the indexes of the misclassified points. D(β0,β) is non-negative and proportional to the distance of the misclassified points to the decision boundary, given by β0 + β⊤x = 0. The gradient is
+∂D(β0,β) ∂β
+∂D(β0,β) ∂β0
+= −
+= −
+(cid:88)
+i∈M (cid:88)
+i∈M
+yixi
+yi
+Practically, one is using a stochastic gradient algorithm, where not the sum of the gradients but the contributions of the observations are considered, and in each iteration we take a step in the direction of the negative gradient. Thus, we obtain the new parameter estimates by
+(cid:18) β β0
+(cid:19)
+←
+(cid:18) β β0
+(cid:19)
++ ρ
+(cid:18) yixi yi
+(cid:19)
+with the learning rate ρ (e.g. equal to 1).
+A drawback of this algorithm is: If the groups can be perfectly separated by a hyperplane, then we obtain infinitely many solutions, see Figure 13.2. Depending on the starting value, different solutions will be obtained. ”‘Support vector machines”’ or ”‘optimally separating hyperplanes”’ are better suitable in this case [see Hastie et al., 2001].
+102
+Figure 13.2: Perfect separation of two classes by a hyperplane.
+13.2 Linear Hyperplanes
+Assuming that training data is available, our training data matrix X ∈ Rn×p has the following form:
+X =
+
+     
+x1 ... xi ... xn
+
+     
+=
+
+     
+x11 x12 ... ... xi1 xi2 ... ... xn1 xn2
+... x1p ... ... ... xip ... ... ... xnp
+
+     
+The class membership is denoted by the vector g ∈ Rn with gi ∈ {−1,1} for i = 1...,n. We can summarise the training information to n pairs
+(x1,g1),(x2,g2),...,(xn,gn).
+Assuming β is a unit vector (||β|| = 1), a hyperplane can be characterised by the affine set
+{x ∈ Ω : x⊤β + β0 (cid:125) (cid:124)
+(cid:123)(cid:122) =:f(x)
+= 0}
+with the corresponding classification rule
+G(x) = sgn[f(x)]
+(sgn stands for the signum function). The function value f(x0) denotes the signed distance of the observation x0 to the hyperplane f(x) = 0 (in the case ||β|| ̸= 0 the signed distance 1 ||β||f(x)). If an observation xi is correctly classified, then gi = sgn[f(xi)] and would be therefore gif(xi) > 0.
+103
+(13.1)
+(13.2)
+13.2.1 The separable case
+In the separable case we can always find a function f : Rp → R defined in (13.1) with gif(xi) > 0 ∀i ∈ {1,...,n}, which means the observations can be completely separated by a hyperplane. The distance M is defined as the minimal distance of a point to the hyperplane taken over all observations:
+M = min i=1,...,n
+gif(xi)
+An example for the two-dimensional case is shown in Figure 13.3.
+x⊤β + β0
+| | β | |
+1
+= M
+| | β | |
+1
+margin
+= M
+Figure 13.3: The separable case.
+The yellow band on both sides of the hyperplane in Figure 13.3, which is exactly 2M units wide, is called the margin. The aim is to find the biggest margin between the training data of the two classes by solving the optimisation problem
+s.t.
+max β,β0 ||β||=1 gi(x⊤
+M
+i β + β0) ≥ M i = 1,...,n.
+This approach provides a unique solution for the problem of finding a separating hyperplane between the classes. The side conditions ensure that the distance of each data point to the decision boundary is at least M and the main condition seeks the maximal M over the parameters β and β0, which define the hyperplane. We still have the constraint that β has to be normed, thus ||β|| = 1, but we can avoid it by replacing the side conditions in (13.3) by
+1 ||β||
+gi(x⊤
+i β + β0) ≥ M.
+This leads to new coefficients ˜β and ˜β0 with || ˜β|| = 1. Since for any β and β0 satisfying this inequality, any positively scaled multiple satisfies it too, we can arbitrarily set M = 1/||β||, which leads to an equivalent formulation of problem (13.3):
+s.t.
+min β,β0 gi(x⊤
+||β||
+i β + β0) ≥ 1
+i = 1,...,n
+104
+(13.3)
+(13.4)
+Problem (13.4) is a convex optimisation problem with a quadratic criterion and linear in- equality constraints. When using the Lagrange method to solve it, one has to minimize the Lagrange primal function defined as
+Lp =
+1 2
+||β||2 −
+n (cid:88)
+i=1
+αi[gi(x⊤
+i β + β0) − 1]
+with respect to β and β0. The Lagrange multipliers αi have to be nonnegative, αi ≥ 0. As norm functions only take values in R+ we can square the target function and add the costant 1 2 without changing the resulting minimum. Assuming ||.|| stands for the Euclidean norm, which means ||β||2 = β⊤β, this modification makes the derivation easier:
+∂Lp ∂β
+= β −
+n (cid:88)
+i=1
+αigixi
+∂Lp ∂β0
+= −
+n (cid:88)
+i=1
+αigi
+Setting these derivatives to zero and substituting them in (13.5) results in the Lagrange dual function
+Ld =
+1 2
+n (cid:88) (
+i=1
+αigixi)⊤(
+n (cid:88)
+j=1
+αjgjxj) − (
+n (cid:88)
+i=1
+αigixi)⊤(
+n (cid:88)
+j=1
+αjgjxj) − β0
+n (cid:88)
+αigi
+i=1 (cid:124) (cid:123)(cid:122) (cid:125) =0
++
+n (cid:88)
+i=1
+=
+n (cid:88)
+i=1
+αi −
+1 2
+n (cid:88)
+i=1
+n (cid:88)
+j=1
+αiαjgigjx⊤
+i xj,
+which gives a lower bound on the objective function (13.4). The solution of problem (13.4) is then obtained by solving the following simpler convex optimisation problem:
+(cid:34) n
+n (cid:88)
+1 2
+(cid:88)
+αi −
+max αi
+i=1 s.t. αi ≥ 0 for i = 1,...,n
+i=1
+n (cid:88)
+j=1
+αiαjgigjx⊤
+i xj
+(cid:35)
+In order to be optimal, the solution of problem (13.7) also has to satisfy the so-called Karush- Kuhn-Tucker conditions
+n (cid:88)
+αigixi = β
+i=1 n (cid:88)
+αigi = 0
+i=1 αi
+(cid:2)gi(x⊤
+i β + β0) − 1(cid:3) = 0
+i = 1,...,n.
+From the side condition of problem (13.7) and condition (13.10) we can see that the following implications are true for all i = 1,...,n:
+(cid:136) αi > 0 ⇒ gi(x⊤
+i β + β0) = 1: the observation xi lies on one of the boundaries of the
+margin; these points are called support vectors
+105
+(13.5)
+αi
+(13.6)
+(13.7)
+(13.8)
+(13.9)
+(13.10)
+(cid:136) gi(x⊤
+i β + β0) > 1 ⇒ αi = 0: the observation xi does not lie on one of the boundaries,
+but outside of the margin
+The case that an observation lies within the margin cannot occur in the separable case. Having a closer look at condition (13.8) we can see that the solution vector β from prob- if αi is equal to zero, the ith lem (13.4) is a linear combination of the support vectors: summand in (13.8) is zero and therefore only the summands of the support vectors do not vanish. Finally, the intercept β0 can be computed by solving equation (13.10) for any of the support vectors. The separating hyperplane in Figure 13.3 has three support vectors.
+13.2.2 The non-separable case
+In the non-separable case the two classes overlap and we have to take into account that we cannot find a hyperplane where all points are on the correct side. There exist two types of misclassification:
+(cid:136) an observation xi with gi = 1 is misclassified when f(xi) < 0 (cid:136) an observation xj with gj = −1 is misclassified when f(xj) > 0
+In order to include unavoidable misclassified points in our optimisation problem, a so-called slack variable ξi ≥ 0 is introduced for each side condition. The value of ξi is the violation of the corresponding side condition: ξi > 0 means the point xi is on the wrong side of its margin by the amount of Mξi, gi(x⊤ i β + β0) < M. Points xj on the correct side of the margin have slack variables ξj = 0. An example is given in Figure 13.4.
+x⊤β + β0
+ξ5
+ξ4
+| | β | |
+1
+ξ1 ξ3
+= M
+ξ2
+| | β | |
+1
+margin
+= M
+Figure 13.4: The non-separable case.
+The new side conditions are gi(x⊤ i β + β0) ≥ M(1 − ξi), which measure the overlap of obervations on the wrong side of the margin in relative distance. As the sum of violations should be as small as possible, (cid:80)n i=1 ξi ≤ const is added to the optimisation problem. When ξi > 1 the observation xi is misclassified, therefore the restriction (cid:80)n i=1 ξi ≤ const means the total amount of misclassified training observations has to be smaller than the constant
+106
+const. Then (13.4) can be written as
+s.t.
+ 
+
+min β,β0 gi(x⊤ ξi ≥ 0 for i = 1,...,n (cid:80)n i=1 ξi ≤ const.
+||β||
+i β + β0) ≥ 1 − ξi for i = 1,...,n
+Points clearly outside the margins do not play an important role for determining β and β0 In linear discriminant analysis, and thus can be ignored for shaping the class boundary. by contrast, all points have influence on the decision rule through the mean vectors and covariance matrices. This property of the SVM can be useful in the presence of outliers in the data which do not lie near the decision boundary.
+Problem (13.11) is also a convex optimisation problem and can be again solved by using Lagrange multipliers. As in the separable case we replace ||β|| by 1 2||β||2 for easier derivation. The side condition (cid:80)n i=1 ξi ≤ const is included in the main condition by adding the term C (cid:80)n i=1 ξi, where the C is the so-called cost parameter. In the separable case C is set to ∞. Problem (13.11) can then be written as
+s.t.
+(cid:34)
+(cid:35)
+n (cid:88)
+1 2
+||β||2 + C
+min β,β0
+ξi
+i=1 i β + β0) ≥ 1 − ξi for i = 1,...,n
+(cid:26) gi(x⊤
+ξi ≥ 0 for i = 1,...,n.
+The corresponding Lagrange primal function, which has to be minimized with respect to β,β0 and ξi, is
+Lp =
+1 2
+||β||2 + C
+n (cid:88)
+i=1
+ξi −
+n (cid:88)
+i=1
+αi[gi(x⊤
+i β + β0) − (1 − ξi)] −
+n (cid:88)
+i=1
+λiξi
+and the required derivatives of Lp are
+∂Lp ∂β
+= β −
+n (cid:88)
+i=1
+αigixi
+∂Lp ∂β0 ∂Lp ∂ξi
+= −
+n (cid:88)
+αigi
+i=1
+= C − αi − λi ∀i = 1,...,n.
+Additionally αi,λi and ξi have to be nonnegative. Setting these derivatives to zero and substituting them in (13.13) we obtain the Lagrange dual function
+Ld =
+=
+(cid:8)(cid:8)(cid:8)(cid:8) n (cid:88) (αi + λi)ξi − ( (cid:8)(cid:8)(cid:8) (cid:8) i=1 (cid:26)(cid:26) (cid:26) αiξi
+n (cid:88) (
+n (cid:88)
+1 2
+αigixi)⊤(
+αjgjxj) +
+i=1
+j=1
+(cid:26)(cid:26) (cid:26) λiξi
+n (cid:88) (cid:26) (cid:26) i=1
+n (cid:88)
+n (cid:88) (cid:26) (cid:26) i=1
+n (cid:88)
+αigi
+− β0
++
+− (cid:26)
+− (cid:26)
+αi
+i=1
+i=1 (cid:124) (cid:123)(cid:122) (cid:125) =0 1 2
+n (cid:88)
+n (cid:88)
+n (cid:88)
+αiαjgigjx⊤
+αi −
+i xj.
+n (cid:88)
+i=1
+αigixi)⊤(
+n (cid:88)
+j=1
+αjgjxj)+
+i=1
+i=1
+j=1
+107
+(13.11)
+(13.12)
+(13.13)
+(13.14)
+The solution of problem (13.11) is then obtained by solving the following simpler convex optimisation problem:
+max αi
+(cid:34) n
+(cid:88)
+i=1
+αi −
+1 2
+n (cid:88)
+i=1
+n (cid:88)
+j=1
+αiαjgigjx⊤
+i xj
+(cid:35)
+s.t. 0 ≤ αi ≤ C for i = 1,...,n
+In order to be optimal, the solution of problem (13.15) also has to satisfy the Karush-Kuhn- Tucker conditions
+n (cid:88)
+αigixi = β
+i=1 n (cid:88)
+αigi = 0
+i=1 C = αi + λi λiξi = 0 (cid:2)gi(x⊤ αi gi(x⊤ i β + β0) − (1 − ξi) ≥ 0.
+i β + β0) − (1 − ξi)(cid:3) = 0
+Conditions (13.18)–(13.21) have to hold for i = 1,...,n. As in the separable case we can see from constraint (13.16) that the solution of β is a linear combination of those xi for which αi > 0, the other summands are zero. These observations xi with positive αi are again called support vectors as β is only constructed out of them. According to condition (13.20), if αi > 0 then gi(x⊤
+i β + β0) = (1 − ξi) which leads to two kinds of support vectors:
+(cid:136) ξi = 0: the observation xi lies on one of the two boundaries of the margin; due to
+conditions (13.18) and (13.19) these vectors are characterised by 0 < αi < C
+(cid:136) ξi > 0: the observation xi does not lie on one of the two boundaries of the margin; as condition (13.19) implies ξi > 0 ⇒ λi = 0, these vectors are characterised by αi = C
+Any of the margin points with αi > 0 and ξi = 0 can be used to determine the intercept β0 by solving the equation gi(x⊤ i β+β0) = 1. In order to obtain numerical stability, the average over all of the solutions can be computed. By changing the cost parameter C the amount of support vectors and the width of the margin changes and therefore C is a so-called tuning parameter.
+13.3 Moving beyond linearity
+Often linear hyperplanes are just a convenient approximation of a much better separation of the classes. Moreover, linear models are easy to calculate and do not easily overfit. A possible compromise between a linear model and a nonlinear decision boundary can be achieved by using transformations of the original data x = (x1,...,xp) as input. Let hm(x) be the mth transformation of x with hm : Rp → R, m = 1,...,M. A linear basis expansion of x is then defined as
+H(x) =
+M (cid:88)
+αmhm(x)
+m=1
+108
+(13.15)
+(13.16)
+(13.17)
+(13.18) (13.19)
+(13.20)
+(13.21)
+Let p < M and h : Rp → RM be the transformation in a higher-dimensional feature space, then our new input features are h(xi) = (h1(xi),...,hM(xi))⊤ instead of xi for i = 1,...,n. We re-define the linear function f(·) in (13.1) to
+f(x) := h(x)⊤β + β0,
+with β ∈ RM and β0 ∈ R. As the basis function hm are fixed, the model is linear in the new variables h(x). This fact causes that the fitting is computed as before, although we actually work with a larger feature space. The function (13.22) is nonlinear in x which results in a nonlinear classifier defined by
+(cid:98)G(x) = sgn
+(cid:105) (cid:104) ˆf(x)
+.
+with ˆf(x) = h(x)⊤ ˆβ + ˆβ0 and ˆβ, ˆβ0 being the estimated coefficients. In the case of Support Vector Machines typical basis expansions are polynomials and splines.
+The optimisation problem (13.13) and its solution can be represented in a way that only involves the new input features as inner products: In the following we work with the transformed feature vectors h(xi) instead of xi. Using the notation ⟨·,·⟩ for the inner product, the Langrangian dual function (13.14) can be written as
+Ld =
+n (cid:88)
+i=1
+αi −
+1 2
+n (cid:88)
+i=1
+n (cid:88)
+j=1
+αiαjgigj⟨h(xi),h(xj)⟩
+and using constraint (13.16) the solution function f(x) can be written as
+f(x) = h(x)⊤β + β0
+= h(x)⊤
+(cid:32) n
+(cid:88)
+αigih(xi)
+(cid:33)
++ β0
+i=1
+=
+n (cid:88)
+αigi⟨h(x),h(xi)⟩ + β0.
+i=1
+The intercept β0 is again determined by solving the equation gif(xi) = 1 for any xi with 0 < αi < C. As we can see, (13.23) and (13.24) involve h(x) only through inner products and therefore we do not need to specify the transformation h(·). It is enough to know a special symmetric positive (semi-) definite function K : Rp × Rp → R, the so-called kernel function, with
+K(u,v) = ⟨h(u),h(v)⟩.
+K computes inner products in the transformed feature space. The following three choices for K are implemented in the R-function svm() from the package e1071:
+(cid:136) linear kernel:
+K(u,v) = ⟨u,v⟩ = u⊤v
+(cid:136) (dth-degree) polynomial kernel:
+K(u,v) = (c0 + γ⟨u,v⟩)d for a constant c0 and γ > 0
+(cid:136) Radial basis kernel (also called RBF (from Radial Basis Function) or Gaussian kernel):
+K(u,v) = exp(−γ||u − v||2) with γ > 0
+109
+(13.22)
+(13.23)
+(13.24)
+(cid:136) Sigmoid kernel (also called neural network or hyperbolic tangent kernel):
+K(u,v) = tanh(γ⟨u,v⟩ + c0) for a constant c0 and γ > 0
+Example: In the two-dimensional case, the polynomial kernel with d = 2 and c0 = γ = 1 has the following form for two observations x = (x1,x2)⊤ and x′ = (x′
+1,x′
+2)⊤:
+K(x,x′) = (1 + ⟨x,x′⟩)2
+= (1 + x1x′ = 1 + 2x1x′
+2)2 1 + x2x′ 2 + (x1x′ 1 + 2x2x′
+1)2 + (x2x′
+2)2 + 2x1x′
+1x2x′ 2
+In this case we have the following basis functions:
+h1(x) = 1, h2(x) =
+√
+2x1, h3(x) =
+√
+2x2, h4(x) = x2
+1, h5(x) = x2
+2, h6(x) =
+Taking all basis function together as h(x) = (h1(x,...,h6(x))⊤ yields the same result (13.25) directly by applying the kernel function on the basis expansion:
+K(x,x′) = ⟨h(x),h(x′)⟩
+After selecting a kernel, choosing the right parameters is often a difficult task. Methods like k-fold cross validation can be used to search for them in a set of possible values.
+In the nonlinear case, the cost parameter C plays an even more important role than in the linear case: A large value of C penalizes observations on the wrong side of the margin heavily and therefore only a few ξi, if any, will be positive. This results in a small margin and a sinuous and overfit decision boundary in the original feature space. A small value of C causes a wider margin and a smoother decision boundary, as observations on the wrong side are not penalized as heavily.
+110
+√
+(13.25)
+2x1x2
+Chapter 14
+Support Vector Machines with R
+14.1
+Introductory examples
+We start with a simple 2-dimensional data set where we can see the details. The code below generates 10 observations from each of two groups, see Figure 14.1. Obviously, it will not be possible to find a perfect separating line.
+> set.seed(1) > x <- matrix(rnorm(20*2), ncol=2) > y <- c(rep(-1,10), rep(1,10)) > x[y==1,] <- x[y==1,] + 1 > plot(x, col=y+3, xlab="x.1", ylab="x.2")
+After arranging the data in an appropriate data frame, the function svm() from the package e1071 can be used to fit the SVM. We have chosen a linear kernel, and the cost parameter as 10. Thus, there is a strong penalty on the slack variables.
+> dat <- data.frame(x=x, y=as.factor(y)) > library(e1071) > res <- svm(y~., data=dat, kernel="linear",cost=10,scale=FALSE) > plot(res, dat) # 1 misclassified, support vectors are crosses
+Figure 14.2 (left) shows the resulting linear separation line. Support vectors are indicated by crosses. There is one misclassified observation.
+The result object contains information such as $index with the indexes of the support vectors. The summary command provides detailed insight.
+> res$index # support vectors
+[1] 1 2 5 7 14 16 17
+> summary(res)
+Call: svm(formula = y ~ ., data = dat, kernel = "linear", cost = 10, scale = FALSE)
+Parameters:
+SVM-Type: C-classification
+SVM-Kernel: linear
+cost: 10 gamma: 0.5
+Number of Support Vectors: 7
+111
+−2−1012
+−1012
+llllllllllllllllllll
+x.1x.2
+Figure 14.1: Artificial data set with 2 groups.
+( 4 3 )
+Number of Classes: 2
+Levels: -1 1
+Now we change the cost parameter to a much smaller value of 0.1. This means that we are less concerned about slack variables, and the margin gets cosiderably wider. This can be seen in Figure 14.2 (right), where many more observations are seen as support vectors (crosses).
+> res1 <- svm(y~., data=dat, kernel="linear",cost=0.1,scale=FALSE) > plot(res1, dat)
+This makes it clear that the cost parameter is important for shaping the decision boundary. Thus we try to tune this parameter in the following, by providing a range of values for the cost parameter.
+> set.seed(1) > res2 <- tune.svm(y~., data=dat, kernel="linear", + > summary(res2)
+cost=c(0.001,0.01,0.1,1,5,10,100))
+Parameter tuning of ‘svm’:
+sampling method: 10-fold cross validation
+best parameters: cost 0.1
+best performance: 0.1
+Detailed performance results: cost error dispersion 1 1e-03 0.70 0.4216370
+112
+−11
+−1012
+−1.0−0.50.00.51.01.52.02.5oooooooooooooxxxxxxx
+SVM classification plotx.2x.1
+SVM classification plotx.2x.1
+−1.0−0.50.00.51.01.52.02.5ooooxxxxxxxxxxxxxxxx
+−1012
+−11
+Figure 14.2: Solution of linear SVM classification for the artificial data set: left with a cost parameter of 10, right with parameter 0.1.
+2 1e-02 0.70 0.4216370 3 1e-01 0.10 0.2108185 4 1e+00 0.15 0.2415229 5 5e+00 0.15 0.2415229 6 1e+01 0.15 0.2415229 7 1e+02 0.15 0.2415229
+The summary gives details about the best choice for the cost parameter.
+Now the best model can be selected and details can be derived.
+> res2$best.model
+Call: best.svm(x = y ~ ., data = dat, cost = c(0.001, 0.01, 0.1, 1, 5,
+10, 100), kernel = "linear")
+Parameters:
+SVM-Type: C-classification
+SVM-Kernel: linear
+cost: 0.1 gamma: 0.5
+Number of Support Vectors: 16
+> summary(res2$best.model)
+Call: best.svm(x = y ~ ., data = dat, cost = c(0.001, 0.01, 0.1, 1, 5,
+10, 100), kernel = "linear")
+Parameters:
+SVM-Type: C-classification
+SVM-Kernel: linear
+cost: 0.1 gamma: 0.5
+Number of Support Vectors: 16
+( 8 8 )
+113
+Number of Classes: 2
+Levels: -1 1
+With the best model we want to do prediction. This we generate new artificial test data according to the same scheme as before, see Figure 14.3.
+> set.seed(1) > xtest <- matrix(rnorm(20*2), ncol=2) > ytest <- sample(c(-1,1),20,rep=TRUE) > xtest[ytest==1,] <- xtest[ytest==1,] +1 > plot(xtest, col=ytest+3, xlab="x.1", ylab="x.2") > testdat <- data.frame(x=xtest, y=as.factor(ytest)) > ypred <- predict(res2$best.model, testdat) > table(truth=ypred, prediction=testdat$y)
+prediction
+truth -1 1 -1 10 1 1 8 1
+From the classification table above it can be seen that 2 observations out of 20 have been misclassified.
+llllllllllllllllllll
+x.1x.2
+−2−1012
+−1.0−0.50.00.51.01.52.0
+Figure 14.3: Artificial test data set with 2 groups.
+Now let us proceed to nonlinear SVMs. We start generating an artificial data example with a more difficult data structure, see code below and plot in Figure 14.4.
+> set.seed(1) > x <- matrix(rnorm(200*2), ncol=2) > x[1:100,] <- x[1:100,]+2 > x[101:150,] <- x[101:150,] -2 > y <- c(rep(1,150), rep(2,50)) > plot(x, col=y, xlab="x.1",ylab="x.2")
+We use the nonlinear radial basis kernel, with default parameters for gamma and cost. This gives the separation boundary shown in Figure 14.5 (left).
+114
+x.1x.2
+−4−2024
+−4−2024
+llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll
+Figure 14.4: Artificial test data set with 2 groups and more difficult structure.
+> dat <- data.frame(x=x, y=as.factor(y)) > train <- sample(200,100) > res <- svm(y~., data=dat[train,], kernel="radial", gamma=1, cost=1) > plot(res, dat[train,])
+SVM classification plotx.2x.1
+12
+−4−2024
+−2024oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+−4−2024
+12
+SVM classification plotx.2x.1
+−2024oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooxxxxxxxxxxxxxxxxxxx
+Figure 14.5: Solution of linear SVM classification for the artificial data set: left with a cost parameter of 1, right with parameter 1e5.
+Figure 14.5 (right) shows the result when modifying the cost parameter to a huge value (1e5). This means, we are very concerned about support vectors, and the result is a highly nonlinear decision boundary.
+> res1 <- svm(y~., data=dat[train,], kernel="radial", gamma=1, cost=1e5) > plot(res1, dat[train,])
+115
+Finally, we tune both the gamma and the cost parameter by providing a range of values. Each comination is a potential candidate.
+> set.seed(1) > res2 <- tune.svm(y~., data=dat[train,], kernel="radial", + > summary(res2)
+cost=c(0.1,1,10,100,1000), gamma=c(0.5,1,2,3,4))
+Parameter tuning of ‘svm’:
+sampling method: 10-fold cross validation
+best parameters: gamma cost 1 2
+best performance: 0.12
+Detailed performance results: gamma cost error dispersion 0.5 1e-01 0.27 0.11595018 1.0 1e-01 0.25 0.13540064 2.0 1e-01 0.25 0.12692955 3.0 1e-01 0.27 0.11595018 4.0 1e-01 0.27 0.11595018 0.5 1e+00 0.13 0.08232726 1.0 1e+00 0.13 0.08232726 2.0 1e+00 0.12 0.09189366 3.0 1e+00 0.13 0.09486833 4.0 1e+00 0.15 0.10801234 0.5 1e+01 0.15 0.07071068 1.0 1e+01 0.16 0.06992059 2.0 1e+01 0.17 0.09486833 3.0 1e+01 0.18 0.10327956 4.0 1e+01 0.18 0.11352924 0.5 1e+02 0.17 0.08232726 1.0 1e+02 0.20 0.09428090 2.0 1e+02 0.19 0.09944289 3.0 1e+02 0.21 0.08755950 4.0 1e+02 0.21 0.08755950 0.5 1e+03 0.21 0.09944289 1.0 1e+03 0.20 0.08164966 2.0 1e+03 0.20 0.09428090 3.0 1e+03 0.22 0.10327956 4.0 1e+03 0.24 0.10749677 > plot(res2)
+Figure 14.6 shows the results of parameter tuning.
+The best model is finally used for prediction of the test set data.
+> ypred <- predict(res2$best.model, dat[-train,]) > table(truth=ypred, prediction=dat$y[-train])
+prediction
+truth 1 2 1 74 7 2 3 16
+14.2 Classification example
+We consider our Pima Indian Diabetes data set with the grouping variable diabetes. For the computation we use the function svm from the library(e1071). The grouping variable is defined as a factor, which causes that svm automatically recognizes this as a classification task.
+116
+0.51.01.52.02.53.03.54.0
+0.120.140.160.180.200.220.240.26
+2004006008001000
+Performance of ‘svm'gammacost
+Figure 14.6: Parameter tuning for the gamma and the cost parameter.
+> grp <- as.factor(pid[,9]) > x <- pid[,1:8] > set.seed(100) > train <- sample(1:nrow(pid),300) > library(e1071) > resSVM <- svm(x[train,],grp[train],kernel="radial") > predSVM <- predict(resSVM,newdata=x[-train,])
+We use a radial basis kernel and the default value for the parameter gamma within the radial basis function, which is set to 1/ncol(x), as well as the default for the cost parameter C (which is 1).
+> TAB1 <- table(predSVM,pid[-train,9]) > mkrSVM <- 1-sum(diag(TAB1))/sum(TAB1) > mkrSVM
+[1] 0.3043478
+The parameter γ and C are important for the usefulness of the classification model, and thus we try to optimize these parameters. For this purpose we consider various ranges for the parameters.
+> tuneSVM <- tune.svm(x[train,],grp[train],gamma=2^(-10:0),cost=2^(-4:2),kernel="radial") > tuneSVM
+Parameter tuning of ‘svm’:
+sampling method: 10-fold cross validation
+best parameters: gamma cost 4
+0.001953125
+best performance: 0.2166667
+> plot(tuneSVM)
+Figure 14.7 shows a representation of the resulting misclassification rates from the cross- validation carried out internally in tune.svm, where both γ and C are varied. Using the optimal values for γ and C, we evaluate the SVM on the test set.
+117
+1234
+0.20.40.60.81.0
+Performance of ‘svm'gammacost
+0.220.240.260.280.300.320.34
+Figure 14.7: Optimimization of the parameters gamma and cost
+> resSVM <- svm(x[train,],grp[train],kernel="radial",gamma=2^-9,cost=2^2) > predSVM <- predict(resSVM,newdata=x[-train,]) > TAB1 <- table(predSVM,pid[-train,9]) > mkrSVM <- 1-sum(diag(TAB1))/sum(TAB1) > mkrSVM
+[1] 0.2282609
+INDR LDA QDA RDA GLM GAM SVM 0.228 0.217
+MKR 0.239
+0.239
+0.25
+0.217
+0.283
+The comparison with the other methods is not completely correct, because different evalua- tion methods have been used. Nevertheless, SVM seems to work quite well.
+14.3 Regression example
+We use the body fat data to illustrate that SVMs can also be used for regression. The data preprocessing is done as earlier.
+> library("UsingR") > data(fat) > attach(fat) > fat$body.fat[fat$body.fat==0]<-NA > fat<-fat[,-cbind(1,3,4,9)] > fat<-fat[-42,] > fat[,4]<-fat[,4]*2.54 > fat <- na.omit(fat)
+We randomly select a training set of 150 observations, and evaluate the prediction quality of the model on the remaining test set of about 100 observations.
+> set.seed(100) > train=sample(1:nrow(fat),150)
+Now we tune the parameters gamma and cost by means of cross-validation.
+118
+20304050
+0.20.40.60.81.0
+2468
+Performance of ‘svm'gammacost
+Figure 14.8: Optimimization of the parameters gamma and cost
+> tuneSVM <- tune.svm(fat[train,-1],fat[train,1],gamma=2^(-8:0),cost=2^(-4:3),kernel="radial") > tuneSVM
+Parameter tuning of ‘svm’:
+sampling method: 10-fold cross validation
+best parameters: gamma cost 4
+0.03125
+best performance: 15.9481
+> plot(tuneSVM)
+Note that the scale used in Figure 14.8 corresponds to the MSE, and not to the RMSE. Using the optimized parameter from Figure 14.8, we use this model to fit the test data set.
+> resSVM <- svm(body.fat~.,data=fat,subset=train,kernel="radial",gamma=2^-5,cost=2^2) > predSVM <- predict(resSVM,newdata=fat[-train,]) > RMSEtest <- sqrt(mean((fat$body.fat[-train]-predSVM)^2)) > RMSEtest
+[1] 5.1158
+Compared to previous results (PCR, PLS), SVM regression has not improved the prediction. On the other hand, previously we did not use training and test data. A visual impression of measured versus predicted values is presented in Figure 14.9.
+119
+llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll
+5101520253035
+10203040
+Body fat measuredBody fat predicted
+Figure 14.9: Measured versus predicted (SVM) values of bodyfat for the test data.
+120
+Bibliography
+H. Bozdogan. Akaike’s Information Criterion and Recent Developments in Information Com-
+plexity. Journal of Mathematical Psychology, 44:62 – 91, 2000.
+K.P. Burnham and D.R. Anderson. Multimodel Inference: Understanding AIC and BIC in
+model selection. Sociological Methods Research, 33:261 – 304, 2004.
+D. Hand, H. Mannila, and P. Smyth. Principles of Data Mining. A Bradford Book, The
+MIT Press, Cambridge, Massachusetts, 2001.
+M. H. Hansen,
+J. Z. Huang, C. Kooperberg, C. Stone,
+and Y. K. Truong. theory. and
+Statistical modeling http://bear.fhcrc.org/ clk/monopdf/mono.html, January 2006.
+with
+spline
+functions:
+Methodology
+T. Hastie, R. Tibshirani, and J. Friedman. The Elements of Statistical Learning. Springer -
+Verlag, New York, 2001.
+M.H. Kutner and C.J. Nachtsheim. Applied Linear Regression Models. McGraw-Hill / Irwin,
+Chicago, 2004.
+P. Sch¨onfeld. Methoden der ¨Okonometrie, Band I. Verlag Franz Vahlen GmbH, Berlin, 1969.
+121

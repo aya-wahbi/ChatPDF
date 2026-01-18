@@ -1,0 +1,82 @@
+Applied Deep Learning
+Introduction to Deep Learning 2025 / 2026
+Alexander Pacha - TU Wien
+Is this spam?
+Congratulations! You have won €650.000,00 in the monthly Euro Millions / Google Promo lottery on April 26th 2019.
+Please consult timothey.berrel@my-email.com for claiming your winnings with the following information:
+1. 2. Address 3. Birth Date 4. Credit Card Number 5. CVC Checksum
+Full Name
+Robert Avthantilayn Online Coordinator
+Is this spam?
+Greetings,
+I am Mrs. Margaret Ko May-Yee, Deputy Chairman and Managing Director of the Chong Hing Bank Limited. I write brieﬂy to seek your collaboration in a multi-million transaction with good return for us on participation. Reply for details.
+Regards, Margaret Ko May-Yee
+What do you see?
+[Fig-2]
+What do you see?
+[Fig-3]
+Machine Learning as Alternative
+Classical Programming quickly reaches its limits in certain situations ● Machine Learning can be a viable alternative to imperative programming
+Training Machine Learning = Use data to answer questions
+Inference
+Terminology
+Artiﬁcial Intelligence
+e.g. knowledge- based systems
+Machine Learning
+e.g. linear regression
+Representation Learning
+e.g. neural networks
+Deep Learning
+Meaningful Representation
+[1]
+How Can a Machine Learn?
+Model
+Loss function
+Optimization function
+Image Classiﬁcation
+Image Classiﬁcation
+Melanoma
+Benign
+[5, 6]
+Object Detection
+Voice Recognition and Natural Conversation
+Google Duplex calls a hairdresser
+[9]
+Robo Calls
+[10]
+Music Harmonization
+DeepBach
+[11]
+Creating new music
+[12]
+Creating new music
+Creating Images from Text
+Text Prompt: an illustration of a baby fox in a suit playing guitar
+AI generated images:
+[13, 14]
+Creating Images from Text
+[19]
+Creating Videos from Text
+Text Prompt: A medium shot, historical adventure setting: Warm lamplight illuminates a cartographer in a cluttered study, poring over an ancient, sprawling map spread across a large table. Cartographer: "According to this old sea chart, the lost island isn't myth! We must prepare an expedition immediately!"
+[18]
+OpenAI writes Python Code
+[7, 8, 15]
+Deep Mind plays Star Craft II
+[16]
+AlphaFold folds Proteins
+[17]
+Summary
+Machine Learning can be an alternative to
+imperative programming
+Machine Learning = Using data to answer questions
+Deep Learning can do pretty cool stuﬀ
+Literature
+1. 2. Goyal et al. Artiﬁcial Intelligence for Diagnosis of Skin Cancer: Challenges and Opportunities, 2019 3. 4. 5. 6. Goyal et al. Artiﬁcial Intelligence for Diagnosis of Skin Cancer: Challenges and Opportunities, 2019 7. Chen et al. Evaluating Large Language Models Trained on Code, 2021 8. Microsoft, OpenAI: OpenAI Model Generates Python Code, 2020 9. 10. 11. Hadjeres et al. DeepBach: A Steerable Model for Bach Chorales Generation, 2017 12. Donahue et al. Piano Genie: An Intelligent Musical Interface, 2018 13. OpenAI. DALL-E: Creating images from text, 2021 14. OpenAI. DALL-E 2: Realistic images and art from a text description, 2022 15. Microsoft. GitHub Copilot: You AI Pair Programmer, 2023 16. DeepMind AlphaStar: Grandmaster level in StarCraft II and Demonstration, 2019 Jumper et al. Highly accurate protein structure prediction with AlphaFold, 2021 17. 18. Veo3 video generator, 2025 19. Maslej et al. The AI Index 2025 Annual Report, 2025
+Ian Goodfellow and Yoshua Bengio and Aaron Courville. Deep Learning, 2016
+Vinyals et al. StarCraft II: A New Challenge for Reinforcement Learning, 2017 Ramesh et al. Zero-Shot Text-to-Image Generation, 2021 Lopez et al. Skin lesion classiﬁcation from dermoscopic images using deep learning techniques, 2017
+Leviathan et al. Google Duplex: An AI System for Accomplishing Real-World Tasks over the Phone, 2018 John Oliver. Robocalls: Last Week Tonight with John Oliver, 2019
+Credits
+Free icons from Flaticon:
+https://www.ﬂaticon.com/free-icon/modeling_1373079 ● https://www.ﬂaticon.com/free-icon/analytics_166904 ● https://www.ﬂaticon.com/free-icon/landing_1284826
+Other images: Fig-1. Title image: https://ﬂic.kr/p/28kDqNb Fig-2. Cat image: https://bristolcountyvet.com/wp-content/uploads/2018/11/pexels-photo-min.jpg Fig-3. Bagel vs. Muﬃn:
+https://www.boredpanda.com/dog-food-comparison-bagel-muﬃn-lookalike-teenybiscuit-kar en-zack

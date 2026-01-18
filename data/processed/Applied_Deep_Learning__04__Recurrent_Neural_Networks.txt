@@ -1,0 +1,396 @@
+Applied Deep Learning
+Recurrent Neural Networks
+Alexander Pacha - TU Wien
+Recap
+What do we mean when we say Multi Layer Perceptron (MLP)? ● What is the key insight that justiﬁes Convolutional Layers? ● Why do we use parameter sharing and what are feature maps?
+Recap - Neural Network
+Inputs
+Hidden Units
+Layer
+Outputs
+Modelling sequences with CNNs
+CNNs expect grid-like structure and can operate on sequences
+Audio waveform, Color image data, Volumetric data, Color video data, ...
+CNN
+Output
+Data
+2
+3
+1
+6
+1
+5
+But:
+Fixed-size input ● Fixed-size output ● Fixed-size number of computations ● No understanding of previous information
+We need to persist information
+Recurrent Neural Network Model
+A = a chunk of neural network xt = Input at time step t ot = Output at time step t
+ot
+A
+xt
+Unfolding Computational Graph
+ot
+o0
+o1
+A
+=
+A
+A
+xt
+x0
+x1
+o2
+A
+x2
+...
+ot
+A
+xt
+Parameter sharing
+RNNs are speciﬁed in terms of transition from one state to another, with shared weights across all time steps, thus allowing to
+Generalize to sequence lengths not seen during training ● Share statistical strength across diﬀerent positions in time “I moved to Berlin in 2020” vs. “In 2020, I moved to Berlin”
+Backpropagation through time (BPTT)
+Simply apply back-propagation to unfolded graph ● Can not parallelize because computation depends on previous state ● Must step through entire graph
+➝ Expensive to train: States must be stored until being reused in backward pass
+Use of shared parameters in diﬀerent time steps assumes that conditional probability distribution is stationary
+➝ Relationship between previous time step and next time step is independent of t
+Activations
+Most frequently used hyperbolic tangent function (tanh) ● Bounded output [-1; 1] ● Easier to compute than sigmoid
+Linear Units can have unbounded output and are likely to explode ➝ Avoid in RNN
+[11, 12]
+Vanishing/Exploding Gradients with RNNs
+Gradients propagated through many stages either vanish or explode ● Long-term dependencies must travel through many stages
+Signal must be able to vanish
+Short-term dependencies have a much stronger signal
+Small perturbations can interfere with signal from long-term dependencies
+Therefore:
+The longer the span of dependencies that needs to be captured, the harder it
+is to train the network
+Special cells can mitigate this problem
+Gradient Clipping to avoid Exploding Gradients
+[1]
+Variations of RNNs
+RNN without outputs
+Network just digests input into state h = Delay of one time step
+h
+h(...)
+➝ unfold
+x
+ht-1
+xt-1
+ht
+xt
+ht+1
+xt+1
+h(...)
+RNN with single output at the end
+x = Input h = Hidden state y = Target o = Output L = Loss 𝜏 = Number of steps
+Weight matrices: U = input to hidden W = hidden to hidden V = hidden to output
+h(...)
+W
+ht-1
+U
+xt-1
+W
+U
+ht
+xt
+W
+y𝜏
+h(...)
+U
+x...
+L𝜏
+W
+V
+U
+o𝜏
+h𝜏
+x𝜏
+RNN with output at each time step
+x = Input h = Hidden state y = Target o = Output L = Loss
+y
+L
+Weight matrices: U = input to hidden W = hidden to hidden V = hidden to output
+V
+o
+h
+W
+U
+x
+V
+U
+y
+L
+o
+h
+x
+W
+Teacher Forcing
+y
+yt
+yt-1
+T
+e
+a
+c
+h
+L
+Lt
+Lt-1
+e
+W
+r
+f
+o
+r
+c
+i
+ot
+ot-1
+n
+o
+ot
+ot-1
+=
+g
+W
+V
+V
+V
+V
+V
+W
+ht
+ht-1
+h
+ht
+ht-1
+U
+U
+U
+U
+U
+xt
+xt-1
+x
+xt
+xt-1
+Train time
+Test time
+RNNs for Vector to Sequences
+Unpacks input into sequence
+yt-1
+Single vector input x used in ● initial state h0 ● input at each time step ● both
+U
+Lt-1
+ot-1
+V
+h0
+W
+ht-1
+R
+U
+W
+R
+yt
+Lt
+ot
+V
+ht
+R
+x
+U
+W
+R
+yt+1
+Lt+1
+ot+1
+V
+ht+1
+R
+W
+y(...)
+h(...)
+How to stop generation?
+Special symbol that can be generated to halt generation
+Is added to each sequence from the training set
+Extra output (head) that predicts whether to stop or not ● Extra output that predicts sequence length 𝜏
+○
+First predict 𝜏 then sample 𝜏 steps worth of data Predict number of remaining steps 𝜏 - t
+RNN Sequence-to-Sequence of same length
+x = Input y = Target o = Output h = Hidden state L = Loss
+yt-1
+Lt-1
+R
+yt
+Lt
+R
+Weight matrices: U = input to hidden W = hidden to hidden V = hidden to output R = output to hidden
+h(...)
+W
+ot-1
+V
+ht-1
+U
+W
+V
+U
+ot
+ht
+W
+xt-1
+xt
+yt+1
+Lt+1
+ot+1
+V
+ht+1
+U
+xt+1
+R
+W
+h(...)
+Bidirectional RNNs
+So far: Only took information
+from the past
+In some situations, the output
+depends on the whole sequence (e.g., speech recognition) ● Output units can beneﬁt from past and future information
+yt-1
+Lt-1
+ot-1
+gt-1
+ht-1
+xt-1
+yt
+Lt
+ot
+gt
+ht
+xt
+yt+1
+Lt+1
+ot+1
+gt+1
+ht+1
+xt+1
+Encoder-Decoder Sequence-to-Sequence
+Input and output sequences can have diﬀerent lengths: ● Process input with encoder (reader) into context C ● Decoder (writer) generates output from context C
+Encoder
+...
+C
+x1
+x2
+x(...)
+xnx
+y1
+y2
+Decoder
+...
+y(...)
+yny
+Deep RNNs
+y
+z
+h
+x
+y
+h
+x
+y
+h
+x
+Long Short-Term Memory (LSTM)
+Designed to allow learning long-term dependencies
+Introduces self-loops to produce
+paths where gradient can ﬂow for a long duration
+Introduces gates to change
+dynamically (controlled by another hidden unit)
+Use addition instead of multiplication
+Gated Recurrent Unit (GRU) similar, but simpler (fewer gates)
+RNNs in Code
+https://colab.research.google.com/drive/1NXNcbzezSgIkSUsG3pqv7yBwLAHG3dR0
+Applications
+Short-Term Predictions
+https://colab.research.google.com/drive/1TIW_emPcv4YjjArDsgapZygOl_j3SFl3
+Source: https://github.com/GoogleCloudPlatform/tensorﬂow-without-a-phd/tree/master/tensorﬂow-rnn-tutorial
+CNNs and RNNs for Optical Character Recognition
+A MOVE to stop Mr. Gaitskell from n be made at a meeting of Labour 0M Ps a resolution on the subject and he is to
+Feature extraction network (CNN)
+Recurrent network
+Recurrent network
+Input image
+Reshaping + Dense
+Best path decoder
+Source: https://github.com/apacha/document-analysis/blob/master/assignment2
+Recognizing Music Scores
+Output: clef-G2, keySignature-DM, timeSignature-2/4, rest-sixteenth, note-F#4_sixteenth, ...
+Source [6]
+Image Captioning
+Source: https://ai.googleblog.com/2016/09/show-and-tell-image-captioning-open.html
+Speech Recognition
+Source: [7]
+Speech Recognition
+Source: [7]
+Connectionist Temporal Classiﬁcation (CTC)
+How to handle unaligned data?
+“My friend has too many cats”
+Connectionist Temporal Classiﬁcation (CTC)
+Summing over probability of all possible alignments between input and the label.
+Input
+x1
+x2
+x3
+x4
+x5
+x6
+x7
+x8
+x9
+x10
+x11
+Alignment
+h
+h
+a
+s
+_
+t
+t
+o
+ε
+o
+o
+Output
+h
+a
+s
+_
+t
+o
+o
+x12
+_
+_
+Source: [9]
+Text translation
+Spanish to English: https://www.tensorﬂow.org/text/tutorials/nmt_with_attention
+Modern Sequence Processing
+Due to the limitations of RNNs, sequence processing is nowadays mostly done with Attention and Transformers ● Fuels Large Language Models
+Later lecture
+Summary
+Recurrent Neural Networks ● have feedback loops and can save state information ● are ideal to process sequential data where a memory is beneﬁcial ● can be trained with Backpropagation Through Time (BPTT) ● are hard to train (vanishing / exploding gradient) ● can process arbitrary input and output sequences
+LSTMs / GRU ● can handle long-term dependencies ● replace multiplication with addition
+CNNs and RNNs play really well together to solve challenging problems
+o
+A
+x
+Literature
+1. Deep Learning: http://www.deeplearningbook.org/ 2. 3.
+Karpathy on RNNs: http://karpathy.github.io/2015/05/21/rnn-eﬀectiveness/ Recurrent Neural Networks for Time Series Forecasting: Current Status and Future Directions: https://arxiv.org/abs/1909.00590v1 Simple OCR: http://cs231n.github.io/assignments2019/assignment3/
+4. 5. Understanding LSTMs (Blog): https://colah.github.io/posts/2015-08-Understanding-LSTMs/ RNN-Walkthrough: https://github.com/gabrielloye/RNN-walkthrough 6. 7. Neural End-To-End OMR: http://ismir2018.ircam.fr/doc/pdfs/33_Paper.pdf 8. Recognizing Speech Commands: https://towardsdatascience.com/recognizing-speech-commands-using-recurrent-neural-networks-with-attenti on-c2b2ba17c837 9. Understanding CTC:
+https://towardsdatascience.com/intuitively-understanding-connectionist-temporal-classiﬁcation-3797e43a86c
+10. Neural Machine Translation with Attention mechanism: https://arxiv.org/abs/1409.0473 11. 12.
+https://towardsdatascience.com/a-comprehensive-guide-on-activation-functions-b45ed37a4fa5 https://machinelearningmastery.com/rectiﬁed-linear-activation-function-for-deep-learning-neural-networks/
+Icon credits
+Free icons from Flaticon: ● https://www.ﬂaticon.com/free-icon/asking_900415 ● https://www.ﬂaticon.com/free-icon/balloons_609624 ● https://www.ﬂaticon.com/free-icon/code_1383431 ● https://www.ﬂaticon.com/free-icon/crane_222566 ● https://www.ﬂaticon.com/free-icon/idea_427735 ● https://www.ﬂaticon.com/free-icon/transfer_179683 ● https://www.ﬂaticon.com/free-icon/broken-link_1201519 ● https://www.ﬂaticon.com/free-icon/gym_755336 ● https://www.ﬂaticon.com/free-icon/stop-sign_2168375

@@ -1,0 +1,178 @@
+Applied Deep Learning
+Neural Networks, Optimization, and Backpropagation
+Alexander Pacha - TU Wien
+Recap
+What is the diﬀerence between Artiﬁcial Intelligence, Machine Learning, and
+Deep Learning?
+What are the main ingredients for machine learning?
+Recap - Terminology
+Artiﬁcial Intelligence
+Machine Learning
+e.g. knowledge- based systems
+e.g. linear regression
+Representation Learning
+e.g. neural networks
+Deep Learning
+Recap - How Can a Machine Learn?
+Model
+Loss function
+Optimization function
+How does a model work?
+“Dog”
+t
+e S g n n a r T
+i
+i
+“Cat”
+Input x ∈ RD
+“???”
+t
+e S
+t s e T
+Model
+Inference
+w ∈ {Dog, Cat} P(w|x)
+P(dog|x) = 0.7 P(cat|x) = 0.3
+How can a model work on unseen data?
+Both datasets must have similar distribution
+[1]
+Does it generalize?
+?
+Image Classiﬁcation
+Melanoma
+Benign
+[2]
+Classes of models
+Discriminative models learn decision boundaries where argmaxw P(w|x) changes
+Generative models learn class-conditional densities P(x|w)
+[3]
+Output
+Classiﬁcation problem with ﬁnite number of diﬀerent labels
+Regression problem with a continuum of output values
+Neural Networks
+Biological Neuron
+[3]
+Artiﬁcial Neuron
+[3]
+Parametric Models
+Neurons are controlled by parameters:
+Weight matrix W ● Bias vector b
+Joining multiple neurons creates a parametric model m = f(x;θ) = Wx + b with parameters θ = (W,b)
+Activation Function
+Also called non-linearities ● Decide whether neuron should be activated or not
+Y = Activation(Σ(weight*input) + bias)
+A neural network without activation function is essentially just a linear
+regression model.
+Popular Activation Functions
+Sigmoid σ(x)=1/(1+e−x)
+ReLU f(x)=max(0,x)
+Leaky ReLU f(x)=1(x<0)(αx)+1(x>=0)(x)
+Sigmoid inspired by nature ● ReLU very eﬃcient to compute but has problem of dying neurons ● Leaky ReLU tries to mitigate dying neurons issue by propagating a small signal
+Recommendation: Never use sigmoid, try ReLU, if dying neurons are a concern, use LeakyReLU or other activation functions.
+Other Activation Functions
+SiLU f(x) = x*sigmoid(x) = x/(1+e-x)
+GELU f(x) = x*(Φ(x)) = x/(1+e-1.702x)
+Alternatives to RELU have shown even better results due to smoother loss surface: ● Sigmoid Linear Unit (SiLU), aka. “Swish” ● Gaussian Error Linear Units (GELU)
+[8, 9]
+Neural Network Inputs
+Hidden Units
+Layer
+Outputs
+Common Neural Network Structure
+Body
+Head
+Loss Functions (aka. Costs)
+How are we doing?
+Loss Function
+Depending on problem, diﬀerent loss functions are required
+Mean Squared Error
+Mean Absolute Error
+Regression
+Classiﬁcation
+Cross Entropy Loss Example
+target = [0.0, 0.0, 0.0, 1.0] good_prediction = [0.01, 0.01, 0.01, 0.96] poor_prediction = [0.25, 0.25, 0.25, 0.25]
+cross_entropy(good_prediction, target) = 0.04
+cross_entropy(poor_prediction, target) = 1.39
+Cross Entropy Loss Example
+Cross-Entropy in Action
+Loss Function
+[4]
+Optimization
+How to get to the valley?
+Gradient Descent
+Nonlinear optimization algorithm ● Most popular algorithm in Deep Learning
+Gradients
+Let f(x1, x2, ..., xn) be a diﬀerential, real-valued function
+You can compute the partial derivative fx ○ This encodes how fast f changes with xi
+i of f with respect to xi
+Gradient ∇f is vector of all partial derivatives of f
+This encodes how fast f changes with all arguments at some location x
+Gradient Descent
+Iterative algorithm on loss function L(θ):
+Compute gradient ● Update parameters
+θ’ = ▽L(θ) θ = θ - αθ’
+with learning rate α > 0
+Requires that loss function is diﬀerentiable and real-valued
+Gradient Descent
+Stochastic gradient descent: θ = θ - α▽L(θ; x(i), y(i))
+Batch gradient descent: θ = θ - α▽L(θ)
+Mini-batch gradient descent: θ = θ - α▽L(θ; x(i;i+n), y(i;i+n))
+Challenges:
+Finding a proper learning rate ● Same learning rate applied to all parameter updates ● Potential critical points
+Global and Local Minima
+[5]
+Critical points
+Gradient descent often does not arrive at a critical point of any kind.
+[5]
+Gradient Descent Optimizations - Momentum
+Loss function can have canyon-like curvature Gradient bounces between canyon walls
+[5]
+Gradient Descent Optimizations - Momentum
+Gradient descent with momentum by introducing a velocity v:
+Update velocity ● Update parameters θ = θ + v ● With momentum β ∈ [0,1) v = βv - α▽L(θ)
+[5]
+Adaptive Algorithms for Gradient Descent
+Adagrad: Adapts learning rate to the parameters (low learning rate for frequent
+events, high learning rate for infrequent events)
+Adadelta: Extension of Adagrad + aggressively decrease learning rate ● RMSprop: Very similar to Adadelta ● Adam: Adapts learning rate + stores decaying average of past gradients, similar to momentum
+AMSGrad: Adapts learning rate + maximum of past squared gradients instead
+of exponential average to update parameters
+Beware: The beneﬁts of adaptive algorithms are still controversial.
+[6]
+Adaptive Algorithms for Gradient Descent
+[6]
+Backpropagation
+Big question: How to compute ▽L(θ)?
+Function f is composed of other functions ● Loss function is again a graph for which we need the derivatives
+Backpropagation recursively applies the chain rule to compute the derivatives for that graph.
+[1]
+Backpropagation
+Sample expression e(a,b) = (a+b)(b+1)
+[7]
+Backpropagation
+Sample expression e(a,b) = (a+b)(b+1), for a=2 and b=1
+[7]
+Backpropagation
+Compute local gradients independently Compute remaining gradients from local ones using multivariate chain rule
+[7]
+Backpropagation
+[7]
+Path Factorization
+Summing over all paths leads to combinatorial explosion
+[7]
+Forward-mode and Reverse-mode diﬀerentiation
+[7]
+Summary
+Neural Networks are inspired by the way how human brain works
+Parametric model ○ Put a weight on each input ○ Activation function to introduce non-linearity
+Model learns on training set to predict samples from test set
+Both sets must have the same underlying distribution ● Loss function tells us “how good we are doing”
+Computing derivatives wrt. parameters creates topology
+Gradient descent is an eﬃcient way to navigate through that terrain
+Literature
+1. Pramerdorfer, Deep Learning for Visual Computing, 2016. 2.
+Lopez et al. Skin lesion classiﬁcation from dermoscopic images using deep learning techniques, 2017. Fei fei Li et al. Deep Learning for Visual Computing
+3. 4. Araujo dos Santos, Artiﬁcial Intelligence 5. Deep Learning: https://www.deeplearningbook.org 6. Ruder. An overview of gradient descent optimization algorithms 7. Colah. Calculus on Computational Graphs: Backpropagation, 2015. 8. Ramachandran et al. Searching for Activation Functions, 2017. 9. Hendrycks et al. Gaussian Error Linear Units (GELUs), 2023.
+Icon credits
+Free icons from Flaticon: ● https://www.ﬂaticon.com/free-icon/modeling_1373079 ● https://www.ﬂaticon.com/free-icon/analytics_166904 ● https://www.ﬂaticon.com/free-icon/landing_1284826 ● https://www.ﬂaticon.com/free-icon/dimmer_1833516 ● https://www.ﬂaticon.com/free-icon/energy-class_1833531 ● https://www.ﬂaticon.com/free-icon/slider-tool_941588 ● https://www.ﬂaticon.com/free-icon/asking_900415
+Other images: ● Title image: https://ﬂic.kr/p/28kDqNb ● Dog: https://ﬂic.kr/p/9pgKCb ● Cat: https://bristolcountyvet.com/wp-content/uploads/2018/11/pexels-photo-min.jpg ● Dog 2: https://ﬂic.kr/p/6YZB9B

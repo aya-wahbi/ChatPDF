@@ -1,202 +1,206 @@
+# src/gui/chatpdf_ui.py
+
 import sys
+import os
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTextEdit, QLineEdit, QPushButton, QListWidget, QLabel, QFileDialog,
-    QMessageBox
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QTextEdit, QLineEdit, QPushButton, QLabel,
+    QMessageBox, QScrollArea, QFrame
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QFont, QTextCursor
 
 # Import your backend logic
+from src.embedding.vector_index import VectorIndex
 from src.query.answer_generation import ChatPDFAssistant
-from scripts.ingest_documents import main as ingest_documents_script # Import the ingestion script's main function
-import os
 
-# --- Worker Thread for LLM Calls (to keep UI responsive) ---
+# --- Worker Thread for LLM Querying ---
+# This is crucial for keeping the UI responsive while the LLM processes the query.
 class QueryWorker(QThread):
-    finished = pyqtSignal(dict) # Signal to emit the result (answer, sources)
-    error = pyqtSignal(str)     # Signal to emit error messages
+    # Signals to communicate with the main thread
+    query_started = pyqtSignal(str)
+    query_finished = pyqtSignal(dict)
+    query_error = pyqtSignal(str)
 
-    def __init__(self, assistant: ChatPDFAssistant, query: str):
+    def __init__(self, assistant: ChatPDFAssistant, query_text: str):
         super().__init__()
         self.assistant = assistant
-        self.query = query
+        self.query_text = query_text
 
     def run(self):
         try:
-            response = self.assistant.query_documents(self.query)
-            self.finished.emit(response)
+            self.query_started.emit(self.query_text)
+            response = self.assistant.query_documents(self.query_text)
+            self.query_finished.emit(response)
         except Exception as e:
-            self.error.emit(f"Error during query: {e}")
+            self.query_error.emit(f"An error occurred during query: {e}")
 
-# --- Main Application Window ---
-class ChatPDFApp(QMainWindow):
+# --- Main GUI Application ---
+class ChatPDFApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ChatPDF - Generative AI Research Assistant")
-        self.setGeometry(100, 100, 1000, 700)
+        self.assistant = None  # Will be initialized after loading index
+        self.init_ui()
+        self.load_index_and_assistant()
 
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
+    def init_ui(self):
+        self.setWindowTitle("ChatPDF - Research Assistant")
+        self.setGeometry(100, 100, 900, 700) # x, y, width, height
 
-        self.chat_history = QTextEdit()
-        self.chat_history.setReadOnly(True)
-        self.layout.addWidget(self.chat_history)
+        # Main layout
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
 
+        # --- Header ---
+        header_label = QLabel("Chat with Your Research Papers")
+        header_label.setFont(QFont("Arial", 20, QFont.Bold))
+        header_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(header_label)
+
+        # --- Status Bar ---
+        self.status_label = QLabel("Initializing...")
+        self.status_label.setFont(QFont("Arial", 10))
+        self.status_label.setStyleSheet("color: gray;")
+        main_layout.addWidget(self.status_label)
+
+        # --- Chat History / Output Area ---
+        self.chat_history_text = QTextEdit()
+        self.chat_history_text.setReadOnly(True)
+        self.chat_history_text.setFont(QFont("Arial", 11))
+        self.chat_history_text.setPlaceholderText("Your conversation with the AI will appear here...")
+        self.chat_history_text.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc; padding: 10px;")
+        
+        # Make the chat history scrollable
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(self.chat_history_text)
+        main_layout.addWidget(scroll_area, 1) # Stretch factor 1
+
+        # --- Input Area ---
+        input_layout = QHBoxLayout()
+        
         self.query_input = QLineEdit()
         self.query_input.setPlaceholderText("Ask a question about your documents...")
-        self.query_input.returnPressed.connect(self.send_query) # Connect Enter key
-        self.layout.addWidget(self.query_input)
+        self.query_input.setFont(QFont("Arial", 11))
+        self.query_input.returnPressed.connect(self.send_query) # Connect Enter key to send_query
+        input_layout.addWidget(self.query_input)
 
         self.send_button = QPushButton("Send")
+        self.send_button.setFont(QFont("Arial", 11, QFont.Bold))
+        self.send_button.setStyleSheet("background-color: #4CAF50; color: white; border-radius: 5px; padding: 8px;")
         self.send_button.clicked.connect(self.send_query)
-        self.layout.addWidget(self.send_button)
+        input_layout.addWidget(self.send_button)
 
-        # --- Document Management Section ---
-        self.doc_management_layout = QHBoxLayout()
-        self.layout.addLayout(self.doc_management_layout)
+        main_layout.addLayout(input_layout)
 
-        self.doc_list_label = QLabel("Loaded Documents:")
-        self.doc_management_layout.addWidget(self.doc_list_label)
+        # --- Separator ---
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        main_layout.addWidget(separator)
 
-        self.doc_list = QListWidget()
-        self.doc_list.setMaximumHeight(100)
-        self.doc_management_layout.addWidget(self.doc_list)
+        # --- Footer ---
+        footer_label = QLabel("Powered by Ollama and Sentence Transformers")
+        footer_label.setFont(QFont("Arial", 9))
+        footer_label.setAlignment(Qt.AlignRight)
+        footer_label.setStyleSheet("color: #777;")
+        main_layout.addWidget(footer_label)
 
-        self.add_doc_button = QPushButton("Add Documents")
-        self.add_doc_button.clicked.connect(self.add_documents)
-        self.doc_management_layout.addWidget(self.add_doc_button)
+        self.set_ui_enabled(False) # Disable UI until assistant is loaded
 
-        self.reindex_button = QPushButton("Re-index All")
-        self.reindex_button.clicked.connect(self.reindex_documents)
-        self.doc_management_layout.addWidget(self.reindex_button)
-        
-        # --- Backend Initialization ---
-        self.index_dir = "data/index"
-        self.index_file = os.path.join(self.index_dir, "faiss_index.bin")
-        self.metadata_file = os.path.join(self.index_dir, "chunk_metadata.pkl")
-        self.raw_data_dir = "data/raw"
+    def set_ui_enabled(self, enabled: bool):
+        self.query_input.setEnabled(enabled)
+        self.send_button.setEnabled(enabled)
+        if enabled:
+            self.query_input.setPlaceholderText("Ask a question about your documents...")
+        else:
+            self.query_input.setPlaceholderText("Loading assistant... Please wait.")
 
-        self.assistant = None
-        self.load_assistant() # Try to load existing assistant on startup
+    def load_index_and_assistant(self):
+        index_dir = "data/index"
+        index_file = os.path.join(index_dir, "faiss_index.bin")
+        metadata_file = os.path.join(index_dir, "chunk_metadata.pkl")
 
-        self.update_document_list() # Populate document list on startup
+        self.status_label.setText("Loading vector index and LLM assistant...")
+        QApplication.processEvents() # Update UI immediately
 
-    def load_assistant(self):
-        """Attempts to load the ChatPDFAssistant with existing index."""
         try:
-            self.assistant = ChatPDFAssistant(self.index_file, self.metadata_file, llm_type='ollama', llm_model_name='llama2')
-            self.chat_history.append("<font color='green'>Assistant loaded successfully!</font>")
+            self.assistant = ChatPDFAssistant(index_file, metadata_file, llm_type='ollama', llm_model_name='llama2')
+            self.status_label.setText("Assistant ready! You can now ask questions.")
+            self.set_ui_enabled(True)
         except FileNotFoundError:
-            self.chat_history.append("<font color='orange'>No existing index found. Please add documents and re-index.</font>")
-            self.assistant = None # Ensure assistant is None if loading fails
+            self.status_label.setText("Error: Index files not found. Please run 'scripts/ingest_documents.py' first.")
+            QMessageBox.critical(self, "Error", "Vector index files not found. Please run 'scripts/ingest_documents.py' to ingest your documents before launching the GUI.")
         except Exception as e:
-            self.chat_history.append(f"<font color='red'>Error loading assistant: {e}</font>")
-            self.assistant = None
-
-    def update_document_list(self):
-        """Refreshes the list of documents in the UI."""
-        self.doc_list.clear()
-        if os.path.exists(self.raw_data_dir):
-            for file_name in os.listdir(self.raw_data_dir):
-                if os.path.isfile(os.path.join(self.raw_data_dir, file_name)):
-                    self.doc_list.addItem(file_name)
-        if self.doc_list.count() == 0:
-            self.doc_list.addItem("No documents added yet.")
-
-    def add_documents(self):
-        """Opens a file dialog to select and copy documents to raw data folder."""
-        file_paths, _ = QFileDialog.getOpenFileNames(
-            self, "Select Documents", "", "PDF Files (*.pdf);;All Files (*)"
-        )
-        if file_paths:
-            for src_path in file_paths:
-                dest_path = os.path.join(self.raw_data_dir, os.path.basename(src_path))
-                try:
-                    import shutil
-                    shutil.copy(src_path, dest_path)
-                    self.chat_history.append(f"<font color='blue'>Added: {os.path.basename(src_path)}</font>")
-                except Exception as e:
-                    self.chat_history.append(f"<font color='red'>Error adding {os.path.basename(src_path)}: {e}</font>")
-            self.update_document_list()
-            QMessageBox.information(self, "Documents Added", "Documents copied to raw data folder. Click 'Re-index All' to process them.")
-
-    def reindex_documents(self):
-        """Triggers the ingestion and indexing process."""
-        self.chat_history.append("<font color='purple'>Re-indexing documents... This may take a while.</font>")
-        self.send_button.setEnabled(False)
-        self.add_doc_button.setEnabled(False)
-        self.reindex_button.setEnabled(False)
+            self.status_label.setText(f"Error initializing assistant: {e}")
+            QMessageBox.critical(self, "Error", f"An error occurred while initializing the assistant: {e}\nPlease ensure Ollama is running and 'llama2' model is downloaded.")
         
-        # Run ingestion in a separate thread to keep UI responsive
-        self.ingestion_worker = IngestionWorker()
-        self.ingestion_worker.finished.connect(self.on_reindex_finished)
-        self.ingestion_worker.error.connect(self.on_reindex_error)
-        self.ingestion_worker.start()
-
-    def on_reindex_finished(self):
-        self.chat_history.append("<font color='green'>Document re-indexing complete!</font>")
-        self.load_assistant() # Attempt to reload assistant with new index
-        self.send_button.setEnabled(True)
-        self.add_doc_button.setEnabled(True)
-        self.reindex_button.setEnabled(True)
-
-    def on_reindex_error(self, message):
-        self.chat_history.append(f"<font color='red'>Re-indexing error: {message}</font>")
-        self.send_button.setEnabled(True)
-        self.add_doc_button.setEnabled(True)
-        self.reindex_button.setEnabled(True)
-
     def send_query(self):
         query_text = self.query_input.text().strip()
         if not query_text:
             return
 
-        self.chat_history.append(f"<p style='color: #007bff;'><b>You:</b> {query_text}</p>")
         self.query_input.clear()
-        self.send_button.setEnabled(False) # Disable button while processing
+        self.set_ui_enabled(False) # Disable input while processing
 
-        if not self.assistant:
-            self.chat_history.append("<p style='color: red;'>Error: Assistant not loaded. Please re-index documents.</p>")
-            self.send_button.setEnabled(True)
-            return
+        # Append user query to chat history
+        self.append_to_chat_history(f"<b>You:</b> {query_text}\n", user_query=True)
+        self.status_label.setText("Querying LLM... This may take a moment.")
 
-        # Run query in a separate thread
-        self.query_worker = QueryWorker(self.assistant, query_text)
-        self.query_worker.finished.connect(self.display_answer)
-        self.query_worker.error.connect(self.display_error)
-        self.query_worker.start()
+        # Start worker thread
+        self.worker = QueryWorker(self.assistant, query_text)
+        self.worker.query_started.connect(self.on_query_started)
+        self.worker.query_finished.connect(self.on_query_finished)
+        self.worker.query_error.connect(self.on_query_error)
+        self.worker.start()
 
-    def display_answer(self, response: Dict[str, Any]):
-        answer = response['answer']
-        sources = response['sources']
-        
-        self.chat_history.append(f"<p style='color: #333333;'><b>AI Assistant:</b> {answer}</p>")
+    def on_query_started(self, query_text):
+        # This signal is emitted from the worker, but we already added the user query
+        pass 
+
+    def on_query_finished(self, response: dict):
+        answer = response.get('answer', 'No answer received.')
+        sources = response.get('sources', [])
+
+        self.append_to_chat_history(f"<b>AI Assistant:</b> {answer}\n", ai_response=True)
         if sources:
-            self.chat_history.append("<p style='color: #555555;'><b>Sources:</b></p>")
+            self.append_to_chat_history("<b>Sources:</b>\n", is_source_header=True)
             for source in sources:
-                self.chat_history.append(f"<p style='color: #555555; margin-left: 20px;'>- {source}</p>")
+                self.append_to_chat_history(f"  - {source}\n", is_source=True)
         
-        self.send_button.setEnabled(True)
+        self.status_label.setText("Assistant ready! You can now ask questions.")
+        self.set_ui_enabled(True)
 
-    def display_error(self, message: str):
-        self.chat_history.append(f"<p style='color: red;'>Error: {message}</p>")
-        self.send_button.setEnabled(True)
+    def on_query_error(self, error_message: str):
+        self.append_to_chat_history(f"<b style='color: red;'>Error:</b> {error_message}\n", is_error=True)
+        self.status_label.setText(f"Error: {error_message}")
+        QMessageBox.critical(self, "Query Error", error_message)
+        self.set_ui_enabled(True)
 
-# --- Worker Thread for Ingestion (to keep UI responsive) ---
-class IngestionWorker(QThread):
-    finished = pyqtSignal()
-    error = pyqtSignal(str)
+    def append_to_chat_history(self, text: str, user_query=False, ai_response=False, is_source_header=False, is_source=False, is_error=False):
+        # Move cursor to end before appending
+        cursor = self.chat_history_text.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.chat_history_text.setTextCursor(cursor)
 
-    def run(self):
-        try:
-            ingest_documents_script() # Call the main function of your ingestion script
-            self.finished.emit()
-        except Exception as e:
-            self.error.emit(str(e))
+        if user_query:
+            self.chat_history_text.append(f"<p style='color: #333; margin-bottom: 5px;'>{text}</p>")
+        elif ai_response:
+            self.chat_history_text.append(f"<p style='color: #0056b3; margin-top: 5px; margin-bottom: 10px;'>{text}</p>")
+        elif is_source_header:
+            self.chat_history_text.append(f"<p style='font-weight: bold; color: #555; margin-top: 10px; margin-bottom: 3px;'>{text}</p>")
+        elif is_source:
+            self.chat_history_text.append(f"<p style='font-size: 0.9em; color: #777; margin-left: 20px; margin-bottom: 2px;'>{text}</p>")
+        elif is_error:
+            self.chat_history_text.append(f"<p style='color: red; font-weight: bold;'>{text}</p>")
+        else:
+            self.chat_history_text.append(text)
+        
+        # Scroll to the bottom
+        self.chat_history_text.verticalScrollBar().setValue(self.chat_history_text.verticalScrollBar().maximum())
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = ChatPDFApp()
-    window.show()
+    ex = ChatPDFApp()
+    ex.show()
     sys.exit(app.exec_())
