@@ -20,8 +20,7 @@ class ChatPDFAssistant:
             llm_type (str): Type of LLM to use ('openai' or 'ollama').
             llm_model_name (str): Specific model name for the LLM.
         """
-        # Removed index_type because VectorIndex only accepts model_name.
-        self.vector_index = VectorIndex()  
+        self.vector_index = VectorIndex()
         if not self.vector_index.load_index(index_path, metadata_path):
             raise FileNotFoundError("Could not load vector index. Please ensure ingestion is complete.")
 
@@ -72,6 +71,100 @@ class ChatPDFAssistant:
             return self._get_llm_response(prompt)
         return "LLM integration not implemented."
 
+    def _rewrite_query_rule_based(self, query: str) -> str:
+        """
+        Performs a simple rule-based rewriting of the query.
+
+        This function normalizes the query by:
+          - Stripping leading and trailing whitespace.
+          - Converting the text to lowercase.
+          - Expanding common abbreviations.
+          - Replacing certain synonyms to improve clarity.
+
++
+        """
+        # Normalize the query
+        query_clean = query.strip().lower()
+
+        # Define dictionaries for abbreviation expansion and synonym replacement
+        abbreviations = {
+            "ml": "machine learning",
+            "rl": "reinforcement learning",
+            "dl": "deep learning",
+            "cnn": "convolutional neural network",
+            "rnn": "recurrent neural network"
+        }
+        synonyms = {
+            "info": "information",
+            "doc": "document",
+            "explain": "describe",
+            "paper": "research paper"
+        }
+
+        # Split the query into individual words
+        words = query_clean.split()
+        new_words = []
+
+        for word in words:
+            # Remove trailing punctuation for a cleaner mapping
+            word_stripped = word.strip(".,!?")
+            # Try to replace with abbreviation expansion first.
+            if word_stripped in abbreviations:
+                new_word = abbreviations[word_stripped]
+            # Then check if there's a synonym replacement.
+            elif word_stripped in synonyms:
+                new_word = synonyms[word_stripped]
+            else:
+                new_word = word_stripped
+            new_words.append(new_word)
+
+        
+        rewritten_query = " ".join(new_words)
+        return rewritten_query
+
+    def _rewrite_query_llm(self, query: str) -> str:
+        """
+        Uses the LLM to rewrite the query for enhanced document retrieval.
+        
+        Provides a prompt to the LLM requesting a rephrase while preserving the original meaning.
+        The prompt now includes an example to guide the LLM's output format and style.
+        """
+        prompt = textwrap.dedent(f"""
+            You are an expert at rephrasing user queries to optimize them for document retrieval systems.
+            Your goal is to make the query more explicit, add relevant keywords, and ensure it captures the full intent of the user,
+            without losing the original meaning.
+
+            Here's an example:
+            Original Query: "What is CNN?"
+            Rewritten Query: "Explain Convolutional Neural Networks, their architecture, applications, and how they differ from other neural networks."
+
+            Now, please rewrite the following query:
+
+            Query: {query}
+            Rewritten Query:
+        """)
+        llm_response = self._generate_answer_with_llm(prompt)
+        return llm_response.strip()
+
+    def _rewrite_query(self, query: str) -> str:
+        """
+        Hybrid query rewriting that uses both rule-based and LLM-based approaches.
+        
+        First, the query is rewritten using simple rules. Then, the original query is sent to the LLM for a refined version.
+        Finally, the function selects the LLM-based rewrite if it provides additional clarity.
+        """
+        rule_rewritten = self._rewrite_query_rule_based(query)
+        logger.info(f"Rule-based rewritten query: '{rule_rewritten}'")
+        
+        llm_rewritten = self._rewrite_query_llm(query)
+        logger.info(f"LLM-based rewritten query: '{llm_rewritten}'")
+        
+        # For the hybrid approach, prefer the LLM-based rewrite if it's non-empty and differs from the rule-based version.
+        if llm_rewritten and llm_rewritten != rule_rewritten:
+            return llm_rewritten
+        else:
+            return rule_rewritten
+
     def _build_prompt(self, query: str, relevant_chunks: List[Dict[str, Any]]) -> str:
         """
         Generates a structured and grounded prompt for the LLM
@@ -103,7 +196,6 @@ class ChatPDFAssistant:
         """)
         return prompt
 
-
     def query_documents(self, query: str, k: int = 5) -> Dict[str, Any]:
         """
         Answers a natural language query by retrieving relevant chunks and using an LLM.
@@ -115,26 +207,25 @@ class ChatPDFAssistant:
         Returns:
             Dict[str, Any]: A dictionary containing the generated answer and source citations.
         """
-        logger.info(f"Searching for relevant documents for query: '{query}'")
-        relevant_chunks = self.vector_index.search(query, k=k)
-    
+        logger.info(f"Received user query: '{query}'")
+
+        # Hybrid query rewriting: apply rule-based and LLM-based rewriting
+        rewritten_query = self._rewrite_query(query)
+        logger.info(f"Hybrid rewritten query used for search: '{rewritten_query}'")
+
+        relevant_chunks = self.vector_index.search(rewritten_query, k=k)
+
         if not relevant_chunks:
             return {"answer": "I couldn't find any relevant information in your documents.", "sources": []}
-    
+
         # Prepare sources with relevance information
         sources_dict = {}
-
         for chunk in relevant_chunks:
             source = chunk.get("source", "Unknown")
             distance = chunk.get("distance", None)
-
             # Keep only the most relevant (smallest distance) chunk per source
-            if source not in sources_dict or (
-                distance is not None and distance < sources_dict[source]["distance"]
-            ):
-                sources_dict[source] = {
-                    "distance": distance
-                }
+            if source not in sources_dict or (distance is not None and distance < sources_dict[source]["distance"]):
+                sources_dict[source] = {"distance": distance}
 
         # Sort sources by relevance (lower distance = more relevant)
         sorted_sources = sorted(
@@ -146,19 +237,16 @@ class ChatPDFAssistant:
         final_sources = []
         for source, meta in sorted_sources:
             if meta["distance"] is not None:
-                final_sources.append(
-                    f"{source} (relevance score: {meta['distance']:.4f})"
-                )
+                final_sources.append(f"{source} (relevance score: {meta['distance']:.4f})")
             else:
                 final_sources.append(source)
 
-    
+        # Build prompt using the original query and the retrieved document chunks
         prompt = self._build_prompt(query, relevant_chunks)
         logger.info("Sending prompt to LLM...")
         answer = self._generate_answer_with_llm(prompt)
-    
-        return {"answer": answer, "sources": final_sources}
 
+        return {"answer": answer, "sources": final_sources}
 
 if __name__ == "__main__":
     index_dir = "data/index"
@@ -172,13 +260,12 @@ if __name__ == "__main__":
         try:
             assistant = ChatPDFAssistant(index_file, metadata_file, llm_type='ollama', llm_model_name='llama2')
     
-            s
             queries = [
                 "What are the fundamental principles of deep learning, and how does it differ from traditional machine learning?",
                 "How does backpropagation help in optimizing neural networks?",
                 "Can you explain the architecture and advantages of transformers in deep learning?",
                 "What are the challenges and potential solutions in implementing deep reinforcement learning algorithms?",
-                "Can you explain Markov Decision?"
+                "Can you explain Markov Decision?",
                 "In what paper can i find info about CNN"
             ]
     
