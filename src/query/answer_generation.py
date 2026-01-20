@@ -172,12 +172,14 @@ if __name__ == "__main__":
         try:
             assistant = ChatPDFAssistant(index_file, metadata_file, llm_type='ollama', llm_model_name='llama2')
     
-            # Updated queries reflecting topics from your ingested documents
+            s
             queries = [
                 "What are the fundamental principles of deep learning, and how does it differ from traditional machine learning?",
                 "How does backpropagation help in optimizing neural networks?",
                 "Can you explain the architecture and advantages of transformers in deep learning?",
-                "What are the challenges and potential solutions in implementing deep reinforcement learning algorithms?"
+                "What are the challenges and potential solutions in implementing deep reinforcement learning algorithms?",
+                "Can you explain Markov Decision?"
+                "In what paper can i find info about CNN"
             ]
     
             for q in queries:

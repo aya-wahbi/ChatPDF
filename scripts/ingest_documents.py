@@ -6,7 +6,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir
 sys.path.insert(0, project_root)
 
 
-import os
+
 import logging
 from src.ingestion.document_loader import load_document
 from src.preprocessing.text_chunking import process_and_chunk_document
@@ -29,7 +29,7 @@ def main():
     os.makedirs(processed_text_folder, exist_ok=True)
     os.makedirs(index_folder, exist_ok=True)
 
-    # Initialize the VectorIndex for FAISS (using only FAISS now)
+    # Initialize the VectorIndex for FAISS 
     vector_index = VectorIndex(model_name='all-MiniLM-L6-v2')
 
     all_processed_chunks = []
@@ -76,7 +76,7 @@ def main():
 if __name__ == "__main__":
     logging.info("Starting document ingestion and indexing process...")
 
-    # Create a dummy raw text file for testing if it doesn't already exist.
+    # Create a dummy raw text file for testing 
     # This dummy file contains content focused on RL, ML, classification/regression,
     # neural networks, and deep learning.
     raw_folder = 'data/raw'

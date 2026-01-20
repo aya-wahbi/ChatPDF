@@ -10,7 +10,7 @@ torchaudio==2.0.2+cpu
 # ============================
 # Embeddings & NLP
 # ============================
-transformers==4.37.2
+
 sentence-transformers==2.6.1
 huggingface_hub==0.21.4
 accelerate==1.12.0
