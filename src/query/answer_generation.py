@@ -74,22 +74,35 @@ class ChatPDFAssistant:
 
     def _build_prompt(self, query: str, relevant_chunks: List[Dict[str, Any]]) -> str:
         """
-        Generates the prompt for the LLM using the retrieved relevant chunks.
+        Generates a structured and grounded prompt for the LLM
+        using only the retrieved document context.
         """
         context = "\n\n".join([chunk['text'] for chunk in relevant_chunks])
+
         prompt = textwrap.dedent(f"""
-            You are an AI research assistant. Use the following pieces of context to answer the user's question.
-            If you don't know the answer, just say that you don't know; don't try to make up an answer.
-            Provide a concise answer and cite the source documents at the end.
-    
+            You are an AI research assistant.
+
+            Answer the user's question using ONLY the information provided
+            in the context below.
+
+            Rules:
+            - If the answer is not contained in the context, say:
+            "The information is not available in the provided documents."
+            - Keep the answer concise and well structured.
+            - Use bullet points where appropriate.
+            - Do NOT use external knowledge.
+            - Do NOT make assumptions.
+
             Context:
             {context}
-    
-            Question: {query}
-    
+
+            Question:
+            {query}
+
             Answer:
         """)
         return prompt
+
 
     def query_documents(self, query: str, k: int = 5) -> Dict[str, Any]:
         """
