@@ -121,22 +121,44 @@ class ChatPDFAssistant:
         if not relevant_chunks:
             return {"answer": "I couldn't find any relevant information in your documents.", "sources": []}
     
-        # Prepare sources for citation
-        sources = []
+        # Prepare sources with relevance information
+        sources_dict = {}
+
         for chunk in relevant_chunks:
-            source_info = f"Source: {chunk.get('source', 'Unknown')}"
-            if 'page' in chunk:
-                source_info += f", Page: {chunk['page']}"
-            sources.append(source_info)
-    
-        # Deduplicate sources while preserving order.
-        unique_sources = list(dict.fromkeys(sources))
+            source = chunk.get("source", "Unknown")
+            distance = chunk.get("distance", None)
+
+            # Keep only the most relevant (smallest distance) chunk per source
+            if source not in sources_dict or (
+                distance is not None and distance < sources_dict[source]["distance"]
+            ):
+                sources_dict[source] = {
+                    "distance": distance
+                }
+
+        # Sort sources by relevance (lower distance = more relevant)
+        sorted_sources = sorted(
+            sources_dict.items(),
+            key=lambda x: x[1]["distance"] if x[1]["distance"] is not None else float("inf")
+        )
+
+        # Format sources for display
+        final_sources = []
+        for source, meta in sorted_sources:
+            if meta["distance"] is not None:
+                final_sources.append(
+                    f"{source} (relevance score: {meta['distance']:.4f})"
+                )
+            else:
+                final_sources.append(source)
+
     
         prompt = self._build_prompt(query, relevant_chunks)
         logger.info("Sending prompt to LLM...")
         answer = self._generate_answer_with_llm(prompt)
     
-        return {"answer": answer, "sources": unique_sources}
+        return {"answer": answer, "sources": final_sources}
+
 
 if __name__ == "__main__":
     index_dir = "data/index"
