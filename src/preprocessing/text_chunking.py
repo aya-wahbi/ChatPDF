@@ -32,7 +32,7 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> L
 
     return chunks
 
-def process_and_chunk_document(file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Dict[str, str]]:
+def process_and_chunk_document(file_path: str, chunk_size: int = 800, chunk_overlap: int = 150) -> List[Dict[str, str]]:
     """
     Loads text from a file and creates overlapping chunks.
 

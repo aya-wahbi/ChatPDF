@@ -4,6 +4,7 @@ import textwrap
 import ollama
 from typing import List, Dict, Any
 from src.embedding.vector_index import VectorIndex
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -81,7 +82,7 @@ class ChatPDFAssistant:
           - Expanding common abbreviations.
           - Replacing certain synonyms to improve clarity.
 
-+
+        +
         """
         # Normalize the query
         query_clean = query.strip().lower()
@@ -196,7 +197,10 @@ class ChatPDFAssistant:
         """)
         return prompt
 
-    def query_documents(self, query: str, k: int = 5) -> Dict[str, Any]:
+
+    def query_documents(self, query: str, k: int = 7) -> Dict[str, Any]:
+        start_time = time.time()
+
         """
         Answers a natural language query by retrieving relevant chunks and using an LLM.
     
@@ -246,7 +250,17 @@ class ChatPDFAssistant:
         logger.info("Sending prompt to LLM...")
         answer = self._generate_answer_with_llm(prompt)
 
-        return {"answer": answer, "sources": final_sources}
+
+        latency = round(time.time() - start_time, 3)
+
+        return {
+            "answer": answer,
+            "sources": final_sources,
+            "latency": latency
+        }
+
+
+        
 
 if __name__ == "__main__":
     index_dir = "data/index"

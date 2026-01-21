@@ -9,6 +9,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCursor
+from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QProgressBar
+
+import shutil
+import subprocess
 
 # Import your backend logic
 from src.embedding.vector_index import VectorIndex
@@ -34,6 +39,9 @@ class QueryWorker(QThread):
             self.query_finished.emit(response)
         except Exception as e:
             self.query_error.emit(f"An error occurred during query: {e}")
+
+
+
 
 # --- Main GUI Application ---
 class ChatPDFApp(QWidget):
@@ -84,6 +92,15 @@ class ChatPDFApp(QWidget):
         self.query_input.setFont(QFont("Arial", 11))
         self.query_input.returnPressed.connect(self.send_query) # Connect Enter key to send_query
         input_layout.addWidget(self.query_input)
+        self.upload_button = QPushButton("Upload PDF")
+        
+        self.upload_button.setFont(QFont("Arial", 10, QFont.Bold))
+        self.upload_button.setStyleSheet(
+            "background-color: #2196F3; color: white; border-radius: 5px; padding: 6px;"
+        )
+        self.upload_button.clicked.connect(self.upload_pdf)
+
+        input_layout.addWidget(self.upload_button)
 
         self.send_button = QPushButton("Send")
         self.send_button.setFont(QFont("Arial", 11, QFont.Bold))
@@ -98,6 +115,16 @@ class ChatPDFApp(QWidget):
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(separator)
+
+        # ---- Progress bar ------
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setVisible(False)
+
+        main_layout.addWidget(self.progress_bar)
 
         # --- Footer ---
         footer_label = QLabel("Powered by Ollama and Sentence Transformers")
@@ -168,6 +195,12 @@ class ChatPDFApp(QWidget):
             for source in sources:
                 self.append_to_chat_history(f"  - {source}\n", is_source=True)
         
+        latency = response.get("latency", None)
+        if latency is not None:
+            self.append_to_chat_history(
+                f"<i>Response time: {latency} seconds</i>\n"
+            )
+
         self.status_label.setText("Assistant ready! You can now ask questions.")
         self.set_ui_enabled(True)
 
@@ -198,6 +231,84 @@ class ChatPDFApp(QWidget):
         
         # Scroll to the bottom
         self.chat_history_text.verticalScrollBar().setValue(self.chat_history_text.verticalScrollBar().maximum())
+    
+    # --- Progress Bar ----
+    def update_progress(self, value, message=None):
+        self.progress_bar.setValue(value)
+        if message:
+            self.status_label.setText(message)
+        QApplication.processEvents()
+
+
+    def run_ingestion(self):
+        self.set_ui_enabled(False)
+        self.progress_bar.setVisible(True)
+        self.update_progress(0, "📄 Starting ingestion...")
+
+        try:
+            process = subprocess.Popen(
+                [sys.executable, "scripts/ingest_documents.py"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+
+            for line in process.stdout:
+                line = line.strip()
+
+                if "Processing file" in line:
+                    self.update_progress(20, "📄 Processing documents...")
+                elif "Chunked" in line:
+                    self.update_progress(45, "✂️ Chunking text...")
+                elif "Generating embeddings" in line:
+                    self.update_progress(65, "🧠 Generating embeddings (this may take time)...")
+                elif "Batches:" in line:
+                    self.update_progress(75, "🧠 Embedding batches running...")
+                elif "FAISS index saved" in line:
+                    self.update_progress(90, "💾 Saving vector index...")
+                elif "Document ingestion and indexing complete" in line:
+                    self.update_progress(100, "✅ Indexing complete.")
+
+            process.wait()
+
+            if process.returncode != 0:
+                raise RuntimeError("Ingestion failed")
+
+            self.load_index_and_assistant()
+            self.update_progress(100, "✅ Documents indexed. Ready to chat.")
+
+        except Exception as e:
+            self.status_label.setText("❌ Failed during indexing.")
+            QMessageBox.critical(self, "Error", str(e))
+
+        self.progress_bar.setVisible(False)
+        self.set_ui_enabled(True)
+
+    def upload_pdf(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select PDF",
+            "",
+            "PDF Files (*.pdf)"
+        )
+
+        if not file_path:
+            return
+
+        raw_dir = "data/raw"
+        os.makedirs(raw_dir, exist_ok=True)
+
+        dest_path = os.path.join(raw_dir, os.path.basename(file_path))
+        shutil.copy(file_path, dest_path)
+
+        QMessageBox.information(
+            self,
+            "Upload Successful",
+            "PDF uploaded successfully. Re-indexing documents..."
+        )
+
+        self.run_ingestion()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
